@@ -13,7 +13,7 @@ class CandidateTable extends React.Component {
     render() {
         return (
             // verticalAlign='middle'
-            <div class="scrolling content" style={{overflow:'auto', maxHeight: this.props.height}}>
+            <div className="scrolling content" style={{overflow:'auto', maxHeight: this.props.height}}>
             <Table sortable compact celled definition textAlign="center">
                 <Table.Header>
                     <Table.Row>
@@ -26,8 +26,12 @@ class CandidateTable extends React.Component {
                 <Table.Body>
                 {this.props.candidateMovies.map(movie => {
                     return (
-                        <Table.Row>
-                            <Table.Cell collapsing width="1">
+                        <Table.Row 
+                          key={movie.id}
+                          style={{cursor: 'pointer'}}
+                          onClick={() => this.props.onMovieClick && this.props.onMovieClick(movie)}
+                        >
+                            <Table.Cell collapsing width="1" onClick={(e) => e.stopPropagation()}>
                             <Button 
                             inverted
                             active={this.props.candidateMovies.includes(movie)}

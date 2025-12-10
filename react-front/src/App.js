@@ -5,7 +5,7 @@ import CandidateTable from './components/CandidateTable'
 import ContextTable from './components/ContextTable'
 import RecommendTable from './components/RecommendTable'
 import SearchForm from './components/SearchForm'
-import { Container, Icon, Button, Grid, Select } from "semantic-ui-react"
+import { Container, Icon, Button, Grid, Select, Modal, Header, Label, Loader, Dimmer, Segment, Dropdown } from "semantic-ui-react"
 import _ from "lodash";
 
 class App extends React.Component {
@@ -20,7 +20,11 @@ class App extends React.Component {
       recommended: [],
       searchKey: "title",
       searchValue: "",
-      modelKey: "EASE"
+      modelKey: "EASE",
+      modalOpen: false,
+      selectedMovie: null,
+      loadingMovies: true,
+      loadingRecommendations: false
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.onRefreshClick = this.onRefreshClick.bind(this)
@@ -31,19 +35,24 @@ class App extends React.Component {
     this.onSearchChange = this.onSearchChange.bind(this)
     this.onSelectChange = this.onSelectChange.bind(this)
     this.onModelSelectClick = this.onModelSelectClick.bind(this)
+    this.onMovieClick = this.onMovieClick.bind(this)
+    this.closeModal = this.closeModal.bind(this)
 
     this.loadMovieDB();
   }
 
   loadMovieDB(){
+    this.setState({ loadingMovies: true });
     fetch('/init', {method: 'GET'}).then(response =>
       response.json().then(data => {this.setState((prevState) => ({
         fullMovies: data.result,
         candidates: data.result,
         candidatesShow: data.result,
         selected: prevState.selected,
-        recommended: prevState.recommended
+        recommended: prevState.recommended,
+        loadingMovies: false
       }))}))
+      .catch(() => this.setState({ loadingMovies: false }))
   }
 
   onRefreshClick(){
@@ -119,11 +128,27 @@ class App extends React.Component {
       modelKey: data.value
     }))
   }
+
+  onMovieClick(movie){
+    this.setState({
+      selectedMovie: movie,
+      modalOpen: true
+    })
+  }
+
+  closeModal(){
+    this.setState({
+      modalOpen: false,
+      selectedMovie: null
+    })
+  }
   
   onRecommendClick(){
     if (this.state.selected.length < 1){
-      console.log('ZERO CONTEXT')
+      alert('Please select at least one movie to get recommendations!');
+      return;
     }
+    this.setState({ loadingRecommendations: true });
     // gather ids from selected list
     let context_ids = this.state.selected.map(movie => movie.id);
     // call recommend api
@@ -134,33 +159,71 @@ class App extends React.Component {
         context: context_ids,
         model: this.state.modelKey})
     };
-    fetch('/recommend', requestOptions).then(response =>
-      response.json().then(data => {this.setState((prevState) => ({
+    fetch('/recommend', requestOptions)
+      .then(response => response.json())
+      .then(data => {this.setState((prevState) => ({
         fullMovies: prevState.fullMovies,
         candidates: prevState.candidates,
         selected: prevState.selected,
-        recommended: data.result
-      }))}))
+        recommended: data.result,
+        loadingRecommendations: false
+      }))})
+      .catch(() => {
+        alert('Error fetching recommendations. Please try again.');
+        this.setState({ loadingRecommendations: false });
+      })
   }
 
   render(){
     return (
       <div className="App">
-        <header class="ui grid" style={{marginTop:40, paddingBottom: 100}}>
-          <div style={{fontSize: "4rem", float: "left", width: "20%"}}>
-              <Icon link onClick={this.onRefreshClick} name='home' />
+        <header className="modern-header">
+          <div className="header-left">
+            <Icon link onClick={this.onRefreshClick} name='home' size="large" />
           </div>
-          <div style={{fontFamily: 'Impact, sans-serif', fontSize: "4rem", float: "left", width: "60%"}}> Recommender System Playground </div>
-          <div style={{fontFamily: "Palatino Linotype, Book Antiqua, Palatino, serif", fontSize: "2rem", float: "left", width: "20%"}}>
-            Yoonki Jeong
-            <a href='https://github.com/yoongi0428'><Icon name='github' /></a>
-            <a href='https://yoonki-j.info/'><Icon name='wordpress' /></a>
+          <div className="header-center">
+            <h1 className="app-title">Movie Recommender System</h1>
+          </div>
+          <div className="header-right">
+            <div className="recommendation-controls">
+              <Dropdown
+                selection
+                compact
+                options={[
+                  { key: 'ease', text: 'EASE', value: 'EASE' },
+                  { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
+                ]}
+                value={this.state.modelKey}
+                onChange={(e, data) => this.onModelSelectClick(e, data)}
+                style={{marginRight: '10px'}}
+              />
+              <Button 
+                icon 
+                labelPosition='left' 
+                onClick={this.onRecommendClick}
+                color='red'
+                loading={this.state.loadingRecommendations}
+                disabled={this.state.selected.length < 1 || this.state.loadingRecommendations}
+              >
+                <Icon name='fire' />
+                RECOMMEND
+              </Button>
+            </div>
+            <div className="author-info">
+              <span>David Omokagbor</span>
+              <a href='https://github.com/DavidOmokagbor1' target="_blank" rel="noopener noreferrer">
+                <Icon name='github' />
+              </a>
+              <a href='https://github.com/DavidOmokagbor1/MOvie-Recommendation' target="_blank" rel="noopener noreferrer">
+                <Icon name='wordpress' />
+              </a>
+            </div>
           </div>
         </header>
         {/* body */}
-        <Container style={{width: "90%", marginTop: 40, paddingBottom: 50, textAlign: "center"}}>
+        <Container className="main-container">
           <Grid>
-            <Grid.Row columns={2}>
+            <Grid.Row columns={1}>
               <Grid.Column>
                 <SearchForm 
                   onSearchChange={this.onSearchChange}
@@ -172,53 +235,112 @@ class App extends React.Component {
             </Grid.Row>
             <Grid.Row columns={2}>
               <Grid.Column>
-                <CandidateTable 
-                fullMovies={this.state.fullMovies} 
-                candidateMovies={this.state.candidatesShow}
-                selectedMovies={this.state.selected}
-                onEvent={this.onCandidateClick}
-                height={600}></CandidateTable>
+                <Segment className="table-container">
+                  <Header as="h3" className="table-header">
+                    <Icon name="list" />
+                    Available Movies
+                  </Header>
+                  {this.state.loadingMovies ? (
+                    <Dimmer active inverted>
+                      <Loader size="large">Loading Movies...</Loader>
+                    </Dimmer>
+                  ) : (
+                    <CandidateTable 
+                      fullMovies={this.state.fullMovies} 
+                      candidateMovies={this.state.candidatesShow}
+                      selectedMovies={this.state.selected}
+                      onEvent={this.onCandidateClick}
+                      onMovieClick={this.onMovieClick}
+                      height={600}>
+                    </CandidateTable>
+                  )}
+                </Segment>
               </Grid.Column>
               <Grid.Column>
-                <ContextTable
-                fullMovies={this.state.fullMovies} 
-                contextMovies={this.state.selected}
-                onEvent={this.onSelectedClick}
-                height={600}></ContextTable>
+                <Segment className="table-container">
+                  <Header as="h3" className="table-header">
+                    <Icon name="heart" />
+                    Selected Movies ({this.state.selected.length})
+                  </Header>
+                  <ContextTable
+                    fullMovies={this.state.fullMovies} 
+                    contextMovies={this.state.selected}
+                    onEvent={this.onSelectedClick}
+                    onMovieClick={this.onMovieClick}
+                    height={600}>
+                  </ContextTable>
+                </Segment>
               </Grid.Column>
             </Grid.Row>
-            <Grid.Row></Grid.Row>
-            <Grid.Row></Grid.Row>
           </Grid>
-  
         </Container>
-        {/* BUTTON: generate recommendation */}
-        <div style={{textAlign: "center"}}>
-          <Select compact
-                  options={[
-                      { key: 'ease', text: 'EASE', value: 'EASE' },
-                      { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
-                  ]}
-                  defaultValue={this.state.modelKey}
-                  onChange={(e, data) => this.onModelSelectClick(e, data)}/>
-          <Button icon labelPosition='left' onClick={this.onRecommendClick}><Icon circular name='fire' color='red' />RECOMMEND!</Button>
-        </div>
-        
   
         {/* Recommendation table */}
-        <div style={{textAlign: "center"}}>
-          <Container id="recommendation" style={{margin: "0 auto", paddingTop: 50, width: "40%", display: "inline-block", verticalAlign: "top"}}>
-            {/* <MovieList movies={this.state.recommended} Height={500}/> */}
-            <RecommendTable
-              fullMovies={this.state.fullMovies} 
-              recommendMovies={this.state.recommended}
-              // onEvent={this.onSelectedClick}
-              height={500}></RecommendTable>
+        {this.state.recommended.length > 0 && (
+          <Container className="recommendations-container">
+            <Segment className="table-container">
+              <Header as="h2" className="recommendations-header">
+                <Icon name="star" color="yellow" />
+                Recommendations
+                {this.state.loadingRecommendations && (
+                  <Loader active inline size="small" style={{marginLeft: '10px'}} />
+                )}
+              </Header>
+              <RecommendTable
+                fullMovies={this.state.fullMovies} 
+                recommendMovies={this.state.recommended}
+                onMovieClick={this.onMovieClick}
+                height={500}>
+              </RecommendTable>
+            </Segment>
           </Container>
-        </div>
-        <footer class="ui grid" style={{paddingTop: 50, margin: "0 auto", width: "80%", display: "inline-block", verticalAlign: "top"}}>
-          <div style={{fontSize: "4rem", float: "left", width: "100%"}}>   </div>
+        )}
+        <footer className="modern-footer">
+          <p>&copy; 2024 Movie Recommender System. Built with React & Flask.</p>
         </footer>
+
+        {/* Movie Details Modal */}
+        <Modal
+          open={this.state.modalOpen}
+          onClose={this.closeModal}
+          closeIcon
+          size="small"
+        >
+          <Header icon="film" content="Movie Details" />
+          <Modal.Content>
+            {this.state.selectedMovie && (
+              <div>
+                <Header as="h2" style={{marginBottom: '20px'}}>
+                  {this.state.selectedMovie.title}
+                </Header>
+                <div style={{marginBottom: '15px'}}>
+                  <Label size="large" color="blue">ID: {this.state.selectedMovie.id}</Label>
+                </div>
+                <div style={{marginBottom: '15px'}}>
+                  <strong>Genre:</strong> 
+                  <Label style={{marginLeft: '10px'}}>{this.state.selectedMovie.genre}</Label>
+                </div>
+                <div style={{marginBottom: '15px'}}>
+                  <strong>Release Date:</strong> {this.state.selectedMovie.date}
+                </div>
+                {this.state.selectedMovie.poster && (
+                  <div style={{marginTop: '20px', textAlign: 'center'}}>
+                    <img 
+                      src={this.state.selectedMovie.poster} 
+                      alt={this.state.selectedMovie.title}
+                      style={{maxWidth: '200px', maxHeight: '300px'}}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </Modal.Content>
+          <Modal.Actions>
+            <Button color="green" onClick={this.closeModal}>
+              Close
+            </Button>
+          </Modal.Actions>
+        </Modal>
       </div>
     );
   }

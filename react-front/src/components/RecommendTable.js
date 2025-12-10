@@ -4,7 +4,7 @@ import { Icon, Table } from 'semantic-ui-react'
 class RecommendTable extends React.Component {    
     render() {
         return (
-            <div class="scrolling content" style={{overflow:'auto', maxHeight: this.props.height}}>
+            <div className="scrolling content" style={{overflow:'auto', maxHeight: this.props.height}}>
             <Table sortable compact celled definition textAlign="center">
                 <Table.Header>
                     <Table.Row>
@@ -17,7 +17,11 @@ class RecommendTable extends React.Component {
                 <Table.Body>
                 {this.props.recommendMovies.map(movie => {
                     return (
-                        <Table.Row>
+                        <Table.Row 
+                          key={movie.id}
+                          style={{cursor: 'pointer'}}
+                          onClick={() => this.props.onMovieClick && this.props.onMovieClick(movie)}
+                        >
                             <Table.Cell collapsing width="1">
                             <Icon circular name='heart' color='red' />
                             </Table.Cell>
