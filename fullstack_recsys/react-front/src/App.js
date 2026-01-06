@@ -418,9 +418,6 @@ class App extends React.Component {
   }
 
   render(){
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:420',message:'Render called',data:{fullMoviesLength:this.state.fullMovies?.length,candidatesLength:this.state.candidates?.length,candidatesShowLength:this.state.candidatesShow?.length,loadingMovies:this.state.loadingMovies},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     // Debug logging
     if (process.env.NODE_ENV === 'development') {
       console.log('[render] State:', {
@@ -558,28 +555,15 @@ class App extends React.Component {
                   {this.state.candidatesShow.length > 0 ? (
                     <div className="movies-grid scrollable-grid">
                       {this.state.candidatesShow
-                        .filter(movie => {
-                          // #region agent log
-                          if (!movie || movie.id === undefined || movie.id === null || !movie.title) {
-                            fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:559',message:'Invalid movie filtered out',data:{hasMovie:!!movie,movieId:movie?.id,hasTitle:!!movie?.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                          }
-                          // #endregion
-                          return movie && movie.id !== undefined && movie.id !== null && movie.title;
-                        })
+                        .filter(movie => movie && movie.id !== undefined && movie.id !== null && movie.title)
                         .map(movie => {
                           const isSelected = this.state.selected.some(m => m.id === movie.id);
                           // Check if poster URL is valid (not a placeholder that will fail)
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:561',message:'Checking movie poster validity',data:{movieId:movie?.id,poster:movie?.poster,posterType:typeof movie?.poster},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                          // #endregion
                           const hasValidPoster = movie.poster && 
                             typeof movie.poster === 'string' &&
                             movie.poster.trim().length > 0 &&
                             !movie.poster.includes('via.placeholder.com') && 
                             movie.poster !== 'null';
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:567',message:'Poster validity result',data:{movieId:movie?.id,hasValidPoster,posterValue:movie?.poster},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                          // #endregion
                           
                           return (
                             <div key={`movie-${movie.id}`} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
@@ -589,17 +573,15 @@ class App extends React.Component {
                                     src={movie.poster} 
                                     alt={movie.title || 'Movie poster'}
                                     onError={(e) => {
-                                      // #region agent log
-                                      fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:576',message:'Image load error triggered',data:{movieId:movie?.id,posterUrl:movie?.poster,nextSibling:!!e.target.nextElementSibling},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                      // #endregion
                                       // Hide broken image and show placeholder instead
-                                      e.target.style.display = 'none';
-                                      const placeholder = e.target.nextElementSibling;
-                                      // #region agent log
-                                      fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:580',message:'Placeholder DOM access result',data:{movieId:movie?.id,placeholderFound:!!placeholder,hasClass:placeholder?.classList?.contains('poster-placeholder-modern')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                      // #endregion
-                                      if (placeholder && placeholder.classList.contains('poster-placeholder-modern')) {
-                                        placeholder.style.display = 'flex';
+                                      try {
+                                        e.target.style.display = 'none';
+                                        const placeholder = e.target.nextElementSibling;
+                                        if (placeholder && placeholder.classList && placeholder.classList.contains('poster-placeholder-modern')) {
+                                          placeholder.style.display = 'flex';
+                                        }
+                                      } catch (error) {
+                                        console.error('Error handling image load failure:', error);
                                       }
                                     }}
                                   />
