@@ -30,7 +30,8 @@ class App extends React.Component {
       selectedMovieDetails: null,
       loadingMovies: true,
       loadingRecommendations: false,
-      loadingMovieDetails: false
+      loadingMovieDetails: false,
+      displayLimit: 48 // Show 48 movies at a time (multiple of 2, 3, 4, 6 for grid)
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.onRefreshClick = this.onRefreshClick.bind(this)
@@ -43,6 +44,7 @@ class App extends React.Component {
     this.onModelSelectClick = this.onModelSelectClick.bind(this)
     this.onMovieClick = this.onMovieClick.bind(this)
     this.closeModal = this.closeModal.bind(this)
+    this.loadMore = this.loadMore.bind(this)
     this.toastRef = React.createRef();
 
     this.loadMovieDB();
@@ -165,19 +167,28 @@ class App extends React.Component {
     if (query.length < 1){
       this.setState((prevState) => ({
         ...prevState,
-        candidatesShow: prevState.candidates
+        candidatesShow: prevState.candidates,
+        displayLimit: 48 // Reset limit on clear
       }))
     }
     else {
       const re = new RegExp(_.escapeRegExp(query), "i");
       const isMatch = type === "title" ? result => re.test(result.title) : result => re.test(result.genre);
-      const results = this.state.candidates.filter(isMatch).filter(data => this.state.candidatesShow.includes(data))
+      const results = this.state.candidates.filter(isMatch)
       this.setState((prevState) => ({
         ...prevState,
-        candidatesShow: results
+        candidatesShow: results,
+        displayLimit: 48 // Reset limit on search
       }))
     }
   }
+
+  loadMore() {
+    this.setState(prevState => ({
+      displayLimit: prevState.displayLimit + 48
+    }));
+  }
+
   onModelSelectClick(e, data){
     const newModel = data.value;
     const oldModel = this.state.modelKey;
@@ -507,7 +518,7 @@ class App extends React.Component {
                   </div>
                   {this.state.candidatesShow.length > 0 ? (
                     <div className="movies-grid scrollable-grid">
-                      {this.state.candidatesShow.map(movie => {
+                      {this.state.candidatesShow.slice(0, this.state.displayLimit).map(movie => {
                         const isSelected = this.state.selected.some(m => m.id === movie.id);
                         return (
                           <div key={movie.id} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
@@ -541,6 +552,19 @@ class App extends React.Component {
                           </div>
                         );
                       })}
+                      {this.state.candidatesShow.length > this.state.displayLimit && (
+                        <div className="load-more-container">
+                          <Button 
+                            basic 
+                            inverted 
+                            color="blue" 
+                            onClick={this.loadMore}
+                            className="load-more-btn"
+                          >
+                            Load More Movies ({this.state.candidatesShow.length - this.state.displayLimit} remaining)
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <Message info className="empty-message-modern">

@@ -88,6 +88,7 @@
 
 .header-center {
   flex: 1;
+  align-items: start;
   text-align: center;
 }
 
@@ -118,6 +119,8 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
 }
 
 .model-selector {
@@ -162,6 +165,8 @@
   padding: 24px 40px;
   background: rgba(10, 14, 26, 0.6);
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -175,6 +180,7 @@
 
 .search-input {
   flex: 1;
+  align-items: start;
 }
 
 .search-input input {
@@ -276,6 +282,7 @@
 
 .movies-section {
   flex: 1;
+  align-items: start;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -320,6 +327,7 @@
   overflow-y: auto;
   padding-right: 8px;
   flex: 1;
+  grid-auto-rows: auto;
 }
 
 .movies-grid::-webkit-scrollbar {
@@ -350,6 +358,29 @@
   overflow-y: auto;
 }
 
+.load-more-container {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+  margin-top: 8px;
+}
+
+.load-more-btn {
+  padding: 12px 32px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  background: rgba(1, 180, 228, 0.1) !important;
+  border: 1px solid rgba(1, 180, 228, 0.3) !important;
+}
+
+.load-more-btn:hover {
+  background: rgba(1, 180, 228, 0.2) !important;
+  border-color: #01b4e4 !important;
+  transform: translateY(-2px);
+}
+
 /* ============================================
    MOVIE CARDS
    ============================================ */
@@ -362,6 +393,7 @@
   cursor: pointer;
   position: relative;
   backdrop-filter: blur(10px);
+  min-height: 280px;
 }
 
 .movie-card-modern:hover {
@@ -393,8 +425,9 @@
   position: relative;
   width: 100%;
   aspect-ratio: 2/3;
+  min-height: 200px; /* Fallback for browsers that don't support aspect-ratio or if width is 0 */
   overflow: hidden;
-  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+  background: linear-gradient(135deg, #2a3142 0%, #1a2028 100%);
 }
 
 .movie-poster-modern img {
@@ -414,8 +447,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.3);
-  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+  color: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, #2a3142 0%, #1a2028 100%);
 }
 
 .movie-overlay {
@@ -550,6 +583,8 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(10, 14, 26, 0.8);
   backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
   margin-top: 40px;
 }
 
