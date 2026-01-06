@@ -187,7 +187,9 @@ class App extends React.Component {
       return;
     }
     
+    if (process.env.NODE_ENV === 'development') {
     console.log(`Model changed from ${oldModel} to ${newModel}`);
+    }
     
     // Clear recommendations when switching models - this is important!
     this.setState((prevState) => ({
@@ -219,7 +221,9 @@ class App extends React.Component {
     this.setState({ loadingMovieDetails: true });
     try {
       const apiUrl = `${config.API_URL}/api/movies/${movieId}/details`;
+      if (process.env.NODE_ENV === 'development') {
       console.log(`Fetching movie details from: ${apiUrl}`);
+      }
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -263,9 +267,6 @@ class App extends React.Component {
   }
   
   onRecommendClick(){
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:entry',message:'Recommend button clicked',data:{selected_count:this.state.selected.length,model:this.state.modelKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
     if (this.state.selected.length < 1){
       if (this.toastRef.current) {
         this.toastRef.current.show('Please select at least one movie to get recommendations!', 'warning');
@@ -291,38 +292,42 @@ class App extends React.Component {
     const recommendUrl = `${config.API_URL}/recommend`;
     const selectedModel = this.state.modelKey;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:before_fetch',message:'About to call backend API',data:{url:recommendUrl,context_ids:context_ids,model:selectedModel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
     
+    if (process.env.NODE_ENV === 'development') {
     console.log(`=== Recommendation Request ===`);
+    }
+    if (process.env.NODE_ENV === 'development') {
     console.log(`URL: ${recommendUrl}`);
+    }
+    if (process.env.NODE_ENV === 'development') {
     console.log(`Model: ${selectedModel}`);
+    }
+    if (process.env.NODE_ENV === 'development') {
     console.log(`Context IDs:`, context_ids);
+    }
+    if (process.env.NODE_ENV === 'development') {
     console.log(`Request body:`, JSON.stringify({ context: context_ids, model: selectedModel }));
+    }
     
     // Use async fetch - non-blocking
     const fetchStartTime = Date.now();
     fetch(recommendUrl, requestOptions)
       .then(response => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:response_received',message:'Backend response received',data:{status:response.status,ok:response.ok,elapsed_ms:Date.now()-fetchStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
         if (!response.ok) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:response_error',message:'Backend returned error status',data:{status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-          // #endregion
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
       })
       .then(data => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:data_parsed',message:'Response JSON parsed',data:{has_result:'result' in data,result_type:Array.isArray(data.result)?'array':typeof data.result,result_length:Array.isArray(data.result)?data.result.length:0,response_keys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
-        // #endregion
+        if (process.env.NODE_ENV === 'development') {
         console.log('=== Recommendation API Response ===');
+        }
+        if (process.env.NODE_ENV === 'development') {
         console.log('Full response:', data);
+        }
+        if (process.env.NODE_ENV === 'development') {
         console.log('Response keys:', Object.keys(data));
+        }
         
         // Handle different response formats
         let recommendations = [];
@@ -368,9 +373,6 @@ class App extends React.Component {
         }
       })
       .catch((error) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:catch',message:'Fetch error caught',data:{error_message:error.message,error_name:error.name,elapsed_ms:Date.now()-fetchStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
         console.error('Error fetching recommendations:', error);
         // Use requestAnimationFrame for smooth UI updates
         requestAnimationFrame(() => {
