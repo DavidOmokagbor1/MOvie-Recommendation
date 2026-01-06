@@ -1,24 +1,32 @@
+/* ============================================
+   MODERN 2026 MOVIE CARD DESIGN
+   ============================================ */
+
 .movie-card {
   background: rgba(20, 24, 35, 0.8) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 12px !important;
+  border-radius: 16px !important;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   position: relative;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .movie-card:hover,
 .movie-card.hovered {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
-  border-color: rgba(1, 180, 228, 0.5) !important;
+  transform: translateY(-12px) scale(1.03);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(1, 180, 228, 0.3) !important;
+  border-color: rgba(1, 180, 228, 0.6) !important;
+  background: rgba(20, 24, 35, 0.95) !important;
 }
 
 .movie-card.selected {
   border-color: #90cea1 !important;
-  box-shadow: 0 0 20px rgba(144, 206, 161, 0.3) !important;
+  box-shadow: 0 0 30px rgba(144, 206, 161, 0.5) !important;
+  background: rgba(144, 206, 161, 0.1) !important;
 }
 
 .movie-card-poster {
@@ -26,18 +34,19 @@
   width: 100%;
   aspect-ratio: 2/3;
   overflow: hidden;
-  background: #0a0e1a;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
 }
 
 .poster-image {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .movie-card:hover .poster-image {
-  transform: scale(1.1);
+  transform: scale(1.2);
+  filter: brightness(1.1);
 }
 
 .poster-placeholder {
@@ -48,9 +57,23 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #4a5568;
+  color: rgba(255, 255, 255, 0.3);
   font-size: 0.9rem;
-  gap: 10px;
+  gap: 12px;
+  position: relative;
+}
+
+.poster-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 30%, rgba(1, 180, 228, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 70%, rgba(229, 9, 20, 0.1) 0%, transparent 50%);
+  opacity: 0.5;
 }
 
 .poster-overlay {
@@ -62,14 +85,15 @@
   background: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.7) 100%
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.9) 100%
   );
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -80,58 +104,88 @@
 
 .overlay-content {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .play-button {
-  background: rgba(229, 9, 20, 0.9) !important;
+  background: linear-gradient(135deg, #e50914 0%, #f40612 100%) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.5) !important;
+  border: none !important;
+  width: 56px !important;
+  height: 56px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .play-button:hover {
-  background: #e50914 !important;
-  transform: scale(1.1);
+  background: linear-gradient(135deg, #f40612 0%, #e50914 100%) !important;
+  transform: scale(1.15) !important;
+  box-shadow: 0 8px 30px rgba(229, 9, 20, 0.7) !important;
 }
 
 .add-button {
   background: rgba(255, 255, 255, 0.2) !important;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
   color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  width: 40px !important;
+  height: 40px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .add-button:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(1, 180, 228, 0.9) !important;
+  border-color: #01b4e4 !important;
+  transform: scale(1.1) rotate(90deg) !important;
+  box-shadow: 0 4px 16px rgba(1, 180, 228, 0.5) !important;
 }
 
 .add-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 36px;
-  height: 36px;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .add-badge:hover {
   background: rgba(1, 180, 228, 0.9);
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(90deg);
+  box-shadow: 0 4px 16px rgba(1, 180, 228, 0.6);
+  border-color: #01b4e4;
 }
 
 .movie-card-content {
   background: rgba(20, 24, 35, 0.95) !important;
-  padding: 15px !important;
+  padding: 16px !important;
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
 }
 
 .movie-title {
@@ -139,31 +193,102 @@
   font-size: 1rem !important;
   font-weight: 600 !important;
   margin-bottom: 8px !important;
-  line-height: 1.3 !important;
+  line-height: 1.4 !important;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.3s ease;
+}
+
+.movie-card:hover .movie-title {
+  color: #01b4e4 !important;
 }
 
 .movie-meta {
-  color: #8b9dc3 !important;
+  color: rgba(255, 255, 255, 0.6) !important;
   font-size: 0.85rem !important;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .movie-genre {
   color: #01b4e4;
   font-weight: 500;
+  padding: 2px 8px;
+  background: rgba(1, 180, 228, 0.1);
+  border-radius: 6px;
+  font-size: 0.75rem;
 }
 
 .movie-date {
-  color: #8b9dc3;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
 }
 
+/* Selected State Enhancements */
+.movie-card.selected .movie-genre {
+  background: rgba(144, 206, 161, 0.2);
+  color: #90cea1;
+}
 
+.movie-card.selected .movie-title {
+  color: #90cea1 !important;
+}
 
+/* Responsive Design */
+@media (max-width: 768px) {
+  .movie-card {
+    border-radius: 12px;
+  }
+  
+  .movie-title {
+    font-size: 0.9rem !important;
+  }
+  
+  .movie-meta {
+    font-size: 0.75rem !important;
+  }
+  
+  .play-button {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  
+  .add-button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .add-badge {
+    width: 36px;
+    height: 36px;
+  }
+}
 
+/* Animation for Card Entry */
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.movie-card {
+  animation: cardEnter 0.5s ease-out;
+}
+
+/* Stagger Animation for Grid */
+.movie-card:nth-child(1) { animation-delay: 0.05s; }
+.movie-card:nth-child(2) { animation-delay: 0.1s; }
+.movie-card:nth-child(3) { animation-delay: 0.15s; }
+.movie-card:nth-child(4) { animation-delay: 0.2s; }
+.movie-card:nth-child(5) { animation-delay: 0.25s; }
+.movie-card:nth-child(6) { animation-delay: 0.3s; }

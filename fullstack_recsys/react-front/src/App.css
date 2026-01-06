@@ -1,0 +1,633 @@
+/* ============================================
+   MODERN 2026 UI DESIGN - MOVIE RECOMMENDER
+   ============================================ */
+
+/* Global App Container */
+.App {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #0d1117 100%);
+  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Animated Background Gradient */
+.App::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(1, 180, 228, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(144, 206, 161, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   MODERN HEADER
+   ============================================ */
+.modern-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(10, 14, 26, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(1, 180, 228, 0.1) 0%, rgba(229, 9, 20, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-logo:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(1, 180, 228, 0.2) 0%, rgba(229, 9, 20, 0.2) 100%);
+  box-shadow: 0 8px 24px rgba(1, 180, 228, 0.3);
+}
+
+.logo-icon {
+  color: #01b4e4 !important;
+  font-size: 1.8rem !important;
+  filter: drop-shadow(0 0 8px rgba(1, 180, 228, 0.5));
+}
+
+.logo-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #01b4e4 0%, #90cea1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+
+.header-center {
+  flex: 1;
+  text-align: center;
+}
+
+.app-title {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 0%, #01b4e4 50%, #90cea1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  letter-spacing: -1px;
+  text-shadow: 0 0 30px rgba(1, 180, 228, 0.3);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.recommendation-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.model-selector {
+  min-width: 120px !important;
+}
+
+.model-selector .ui.dropdown {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+}
+
+.recommend-btn {
+  background: linear-gradient(135deg, #e50914 0%, #f40612 100%) !important;
+  border: none !important;
+  padding: 12px 24px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  text-transform: uppercase !important;
+}
+
+.recommend-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.6) !important;
+  background: linear-gradient(135deg, #f40612 0%, #e50914 100%) !important;
+}
+
+.recommend-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ============================================
+   SEARCH CONTAINER
+   ============================================ */
+.search-container {
+  padding: 24px 40px;
+  background: rgba(10, 14, 26, 0.6);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.search-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+}
+
+.search-input input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  padding: 14px 20px !important;
+  font-size: 1rem !important;
+  transition: all 0.3s ease !important;
+}
+
+.search-input input:focus {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: #01b4e4 !important;
+  box-shadow: 0 0 0 3px rgba(1, 180, 228, 0.2) !important;
+}
+
+.search-input input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.search-select {
+  min-width: 100px !important;
+}
+
+.search-button {
+  background: linear-gradient(135deg, #01b4e4 0%, #0099cc 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  padding: 14px 28px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(1, 180, 228, 0.3) !important;
+}
+
+.search-button:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(1, 180, 228, 0.5) !important;
+}
+
+.clear-search {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+}
+
+/* ============================================
+   MAIN CONTAINER
+   ============================================ */
+.main-container {
+  position: relative;
+  z-index: 1;
+  padding: 40px 20px !important;
+  max-width: 1800px !important;
+  margin: 0 auto !important;
+}
+
+.three-column-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.column {
+  background: rgba(20, 24, 35, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  height: calc(100vh - 280px);
+  display: flex;
+  flex-direction: column;
+}
+
+.column:hover {
+  border-color: rgba(1, 180, 228, 0.3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.available-column {
+  background: linear-gradient(135deg, rgba(1, 180, 228, 0.05) 0%, rgba(20, 24, 35, 0.6) 100%);
+}
+
+.selected-column {
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.05) 0%, rgba(20, 24, 35, 0.6) 100%);
+}
+
+.recommendations-column {
+  background: linear-gradient(135deg, rgba(144, 206, 161, 0.05) 0%, rgba(20, 24, 35, 0.6) 100%);
+}
+
+.movies-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.section-header-modern {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-header-modern .icon {
+  font-size: 2rem !important;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.section-header-modern h2 {
+  color: #fff !important;
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  letter-spacing: -0.5px;
+}
+
+.section-subtitle {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 0.9rem !important;
+  margin: 4px 0 0 0 !important;
+  font-weight: 400;
+}
+
+/* ============================================
+   MOVIE GRIDS
+   ============================================ */
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px;
+  flex: 1;
+}
+
+.movies-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.movies-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.movies-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #01b4e4 0%, #90cea1 100%);
+  border-radius: 10px;
+}
+
+.movies-grid::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #90cea1 0%, #01b4e4 100%);
+}
+
+.compact-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.scrollable-grid {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* ============================================
+   MOVIE CARDS
+   ============================================ */
+.movie-card-modern {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.movie-card-modern:hover {
+  transform: translateY(-8px) scale(1.03);
+  border-color: rgba(1, 180, 228, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.movie-card-modern.selected {
+  border-color: #90cea1;
+  box-shadow: 0 0 24px rgba(144, 206, 161, 0.4);
+}
+
+.movie-card-modern.compact {
+  border-radius: 12px;
+}
+
+.movie-card-modern.recommended {
+  border-color: rgba(229, 9, 20, 0.3);
+}
+
+.movie-card-modern.recommended:hover {
+  border-color: rgba(229, 9, 20, 0.6);
+  box-shadow: 0 16px 40px rgba(229, 9, 20, 0.3);
+}
+
+.movie-poster-modern {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2/3;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+}
+
+.movie-poster-modern img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.movie-card-modern:hover .movie-poster-modern img {
+  transform: scale(1.15);
+}
+
+.poster-placeholder-modern {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+}
+
+.movie-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.movie-card-modern:hover .movie-overlay {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.add-btn,
+.remove-btn {
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  transition: all 0.3s ease !important;
+}
+
+.add-btn:hover {
+  background: rgba(1, 180, 228, 0.9) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 16px rgba(1, 180, 228, 0.5) !important;
+}
+
+.remove-btn:hover {
+  background: rgba(229, 9, 20, 0.9) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.5) !important;
+}
+
+.recommendation-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #e50914 0%, #f40612 100%);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.5);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(229, 9, 20, 0.7);
+  }
+}
+
+.movie-info-modern {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.movie-info-modern h3,
+.movie-info-modern h4 {
+  color: #fff !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  margin: 0 0 6px 0 !important;
+  line-height: 1.3 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.movie-info-modern h3:hover,
+.movie-info-modern h4:hover {
+  color: #01b4e4 !important;
+}
+
+.movie-info-modern p {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 0.75rem !important;
+  margin: 0 !important;
+}
+
+/* ============================================
+   EMPTY MESSAGES
+   ============================================ */
+.empty-message-modern {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  padding: 40px !important;
+  text-align: center !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.empty-message-modern .header {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 1.2rem !important;
+  margin-bottom: 12px !important;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.modern-footer {
+  text-align: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 14, 26, 0.8);
+  backdrop-filter: blur(10px);
+  margin-top: 40px;
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+.movie-detail-modal {
+  background: rgba(10, 14, 26, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.movie-detail-modal .ui.modal {
+  background: rgba(20, 24, 35, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 1400px) {
+  .three-column-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .column {
+    height: auto;
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-header {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+  }
+  
+  .app-title {
+    font-size: 1.5rem;
+  }
+  
+  .header-center {
+    order: -1;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+  
+  .search-container {
+    padding: 16px 20px;
+  }
+  
+  .search-wrapper {
+    flex-wrap: wrap;
+  }
+  
+  .movies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+  }
+  
+  .compact-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .app-title {
+    font-size: 1.2rem;
+  }
+  
+  .logo-text {
+    font-size: 1.2rem;
+  }
+  
+  .recommendation-controls {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}

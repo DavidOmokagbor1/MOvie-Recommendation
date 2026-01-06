@@ -1,51 +1,141 @@
+/* ============================================
+   MODERN 2026 MOVIE GRID DESIGN
+   ============================================ */
+
 .movie-grid-container {
   margin-bottom: 40px;
+  animation: fadeIn 0.6s ease-out;
 }
 
 .section-header {
   color: #fff !important;
   font-size: 1.8rem !important;
   font-weight: 700 !important;
-  margin-bottom: 25px !important;
+  margin-bottom: 28px !important;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   text-transform: none !important;
   letter-spacing: -0.5px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .section-header .icon {
   color: #01b4e4;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 8px rgba(1, 180, 228, 0.5));
+  transition: all 0.3s ease;
+}
+
+.section-header:hover .icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 12px rgba(1, 180, 228, 0.7));
 }
 
 .movie-count {
-  color: #8b9dc3;
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 400;
-  font-size: 1.2rem;
+  font-size: 1rem;
+  margin-left: 12px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .movie-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 24px;
-  padding: 10px 0;
+  padding: 12px 0;
+  position: relative;
+}
+
+.movie-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(1, 180, 228, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.movie-grid > * {
+  position: relative;
+  z-index: 1;
 }
 
 .empty-message {
-  background: rgba(20, 24, 35, 0.6) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #8b9dc3 !important;
-  padding: 40px !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  padding: 60px 40px !important;
   text-align: center;
-  border-radius: 12px;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
 }
 
-/* Responsive */
-@media (max-width: 1200px) {
+.empty-message::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle, rgba(1, 180, 228, 0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-message .header {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 1.3rem !important;
+  margin-bottom: 12px !important;
+  position: relative;
+  z-index: 1;
+}
+
+.empty-message p {
+  color: rgba(255, 255, 255, 0.5) !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive Grid */
+@media (max-width: 1400px) {
   .movie-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .movie-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 18px;
+  }
+  
+  .section-header {
+    font-size: 1.6rem !important;
   }
 }
 
@@ -57,6 +147,16 @@
 
   .section-header {
     font-size: 1.4rem !important;
+    gap: 12px;
+  }
+  
+  .section-header .icon {
+    font-size: 1.5rem;
+  }
+  
+  .movie-count {
+    font-size: 0.9rem;
+    padding: 3px 10px;
   }
 }
 
@@ -65,8 +165,109 @@
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 12px;
   }
+  
+  .section-header {
+    font-size: 1.2rem !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .empty-message {
+    padding: 40px 20px !important;
+  }
 }
 
+/* Grid Loading State */
+.movie-grid.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
 
+.movie-grid.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(1, 180, 228, 0.3);
+  border-top-color: #01b4e4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
 
+/* Grid Item Hover Effect */
+.movie-grid:hover .movie-card:not(:hover) {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+.movie-grid .movie-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Stagger Animation */
+.movie-grid .movie-card {
+  animation: fadeInUp 0.5s ease-out backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.movie-grid .movie-card:nth-child(1) { animation-delay: 0.05s; }
+.movie-grid .movie-card:nth-child(2) { animation-delay: 0.1s; }
+.movie-grid .movie-card:nth-child(3) { animation-delay: 0.15s; }
+.movie-grid .movie-card:nth-child(4) { animation-delay: 0.2s; }
+.movie-grid .movie-card:nth-child(5) { animation-delay: 0.25s; }
+.movie-grid .movie-card:nth-child(6) { animation-delay: 0.3s; }
+.movie-grid .movie-card:nth-child(7) { animation-delay: 0.35s; }
+.movie-grid .movie-card:nth-child(8) { animation-delay: 0.4s; }
+.movie-grid .movie-card:nth-child(9) { animation-delay: 0.45s; }
+.movie-grid .movie-card:nth-child(10) { animation-delay: 0.5s; }
+
+/* Compact Grid Variant */
+.movie-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+/* Scrollable Grid */
+.movie-grid.scrollable {
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.movie-grid.scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.movie-grid.scrollable::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.movie-grid.scrollable::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #01b4e4 0%, #90cea1 100%);
+  border-radius: 10px;
+}
+
+.movie-grid.scrollable::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #90cea1 0%, #01b4e4 100%);
+}
