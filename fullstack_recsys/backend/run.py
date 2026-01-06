@@ -323,8 +323,15 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-	db.session.rollback()
+	# Only rollback if using SQLite (db.session exists and is active)
+	try:
+		if db.session and hasattr(db.session, 'rollback'):
+			db.session.rollback()
+	except Exception:
+		# Ignore rollback errors (e.g., if using MongoDB)
+		pass
 	return jsonify({'message': 'Internal server error', 'error': 'INTERNAL_ERROR'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5555, debug=True)
+    debug_mode = os.getenv("FLASK_ENV") != "production"
+    app.run(host="0.0.0.0", port=5555, debug=debug_mode)
