@@ -1,6 +1,7 @@
 import React from 'react';
 // import logo from './logo.svg';
 import './App.css';
+import config from './config';
 import CandidateTable from './components/CandidateTable'
 import ContextTable from './components/ContextTable'
 import RecommendTable from './components/RecommendTable'
@@ -8,7 +9,7 @@ import SearchForm from './components/SearchForm'
 import Toast from './components/Toast'
 import MovieDetailEnhanced from './components/MovieDetailEnhanced'
 import MovieGrid from './components/MovieGrid'
-import { Container, Icon, Button, Grid, Modal, Header, Label, Loader, Dimmer, Segment, Dropdown, Message, Input } from "semantic-ui-react"
+import { Container, Icon, Button, Grid, Modal, Header, Label, Loader, Dimmer, Segment, Dropdown, Message, Input, Divider } from "semantic-ui-react"
 import _ from "lodash";
 
 class App extends React.Component {
@@ -71,9 +72,28 @@ class App extends React.Component {
 
   loadMovieDB(){
     this.setState({ loadingMovies: true });
-    fetch('/init', {method: 'GET'})
-      .then(response => response.json())
+    const apiUrl = `${config.API_URL}/init`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Attempting to load movies from: ${apiUrl}`);
+    }
+    
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Successfully loaded ${data.result?.length || 0} movies`);
+        }
         this.setState((prevState) => ({
           fullMovies: data.result,
           candidates: data.result,
@@ -83,10 +103,14 @@ class App extends React.Component {
           loadingMovies: false
         }));
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Error loading movies:', error);
         this.setState({ loadingMovies: false });
         if (this.toastRef.current) {
-          this.toastRef.current.show('Failed to load movies. Please refresh the page.', 'error');
+          const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
+            ? `Cannot connect to backend at ${config.API_URL}. Please ensure the backend server is running on port 5555.`
+            : `Failed to load movies: ${error.message || 'Unknown error'}. Please check the backend server.`;
+          this.toastRef.current.show(errorMessage, 'error');
         }
       });
   }
@@ -102,29 +126,25 @@ class App extends React.Component {
   }
 
   onCandidateClick(movie){
-    // check if movie already exists in candidates
-    let alreadyExists = this.state.selected.includes(movie)
-    if (!alreadyExists) {
-      let movieIndex = this.state.candidatesShow.indexOf(movie);
+    // Use Set for O(1) lookup instead of O(n) array.includes()
+    const selectedIds = new Set(this.state.selected.map(m => m.id));
+    if (!selectedIds.has(movie.id)) {
+      // Use filter for better performance than slice operations
       this.setState((prevState) => ({
         ...prevState,
-        candidatesShow: [...prevState.candidatesShow.slice(0, movieIndex), ...prevState.candidatesShow.slice(movieIndex+1, prevState.candidatesShow.length)],
+        candidatesShow: prevState.candidatesShow.filter(m => m.id !== movie.id),
         selected: [...prevState.selected, movie],
       }))
     }
   }
 
   onSelectedClick(movie){
-    let alreadyExists = this.state.selected.includes(movie)
-    if (alreadyExists) {
-      let movieIndex = this.state.selected.indexOf(movie);
-      console.log(movieIndex);
-      this.setState((prevState) => ({
-          ...prevState,
-          candidatesShow: [...prevState.candidatesShow, movie],
-          selected: [...prevState.selected.slice(0, movieIndex), ...prevState.selected.slice(movieIndex+1, prevState.selected.length)],
-        }))
-    }
+    // Use filter for better performance
+    this.setState((prevState) => ({
+        ...prevState,
+        candidatesShow: [...prevState.candidatesShow, movie],
+        selected: prevState.selected.filter(m => m.id !== movie.id),
+      }))
   }
 
   onSearchChange(e, data) {
@@ -159,10 +179,28 @@ class App extends React.Component {
     }
   }
   onModelSelectClick(e, data){
+    const newModel = data.value;
+    const oldModel = this.state.modelKey;
+    
+    // Don't do anything if model hasn't changed
+    if (newModel === oldModel) {
+      return;
+    }
+    
+    console.log(`Model changed from ${oldModel} to ${newModel}`);
+    
+    // Clear recommendations when switching models - this is important!
     this.setState((prevState) => ({
       ...prevState,
-      modelKey: data.value
-    }))
+      modelKey: newModel,
+      recommended: [], // Clear previous recommendations
+      loadingRecommendations: false
+    }));
+    
+    // Show notification
+    if (this.toastRef.current) {
+      this.toastRef.current.show(`Model changed to ${newModel}. Select movies and click RECOMMEND to get new suggestions.`, 'info');
+    }
   }
 
   onMovieClick(movie){
@@ -178,25 +216,40 @@ class App extends React.Component {
   }
 
   fetchMovieDetails = async (movieId) => {
+    this.setState({ loadingMovieDetails: true });
     try {
-      const response = await fetch(`/api/movies/${movieId}/details`)
+      const apiUrl = `${config.API_URL}/api/movies/${movieId}/details`;
+      console.log(`Fetching movie details from: ${apiUrl}`);
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
         this.setState({
           selectedMovieDetails: data.result,
           loadingMovieDetails: false
-        })
+        });
       } else {
         // If enhanced details fail, just use basic movie info
+        console.warn(`Failed to fetch movie details: HTTP ${response.status}`);
         this.setState({
           loadingMovieDetails: false
-        })
+        });
       }
     } catch (error) {
-      console.error('Error fetching movie details:', error)
+      console.error('Error fetching movie details:', error);
       this.setState({
         loadingMovieDetails: false
-      })
+      });
+      if (this.toastRef.current) {
+        const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
+          ? `Cannot connect to backend at ${config.API_URL}. Please ensure the backend server is running.`
+          : `Failed to load movie details: ${error.message || 'Unknown error'}`;
+        this.toastRef.current.show(errorMessage, 'error');
+      }
     }
   }
 
@@ -210,13 +263,21 @@ class App extends React.Component {
   }
   
   onRecommendClick(){
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:entry',message:'Recommend button clicked',data:{selected_count:this.state.selected.length,model:this.state.modelKey},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
     if (this.state.selected.length < 1){
       if (this.toastRef.current) {
         this.toastRef.current.show('Please select at least one movie to get recommendations!', 'warning');
       }
       return;
     }
-    this.setState({ loadingRecommendations: true });
+    
+    // Use setTimeout to defer setState and prevent blocking UI
+    setTimeout(() => {
+      this.setState({ loadingRecommendations: true });
+    }, 0);
+    
     // gather ids from selected list
     let context_ids = this.state.selected.map(movie => movie.id);
     // call recommend api
@@ -227,25 +288,100 @@ class App extends React.Component {
         context: context_ids,
         model: this.state.modelKey})
     };
-    fetch('/recommend', requestOptions)
-      .then(response => response.json())
+    const recommendUrl = `${config.API_URL}/recommend`;
+    const selectedModel = this.state.modelKey;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:before_fetch',message:'About to call backend API',data:{url:recommendUrl,context_ids:context_ids,model:selectedModel},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+    
+    console.log(`=== Recommendation Request ===`);
+    console.log(`URL: ${recommendUrl}`);
+    console.log(`Model: ${selectedModel}`);
+    console.log(`Context IDs:`, context_ids);
+    console.log(`Request body:`, JSON.stringify({ context: context_ids, model: selectedModel }));
+    
+    // Use async fetch - non-blocking
+    const fetchStartTime = Date.now();
+    fetch(recommendUrl, requestOptions)
+      .then(response => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:response_received',message:'Backend response received',data:{status:response.status,ok:response.ok,elapsed_ms:Date.now()-fetchStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        if (!response.ok) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:response_error',message:'Backend returned error status',data:{status:response.status,statusText:response.statusText},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+          // #endregion
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
-        this.setState((prevState) => ({
-          fullMovies: prevState.fullMovies,
-          candidates: prevState.candidates,
-          selected: prevState.selected,
-          recommended: data.result,
-          loadingRecommendations: false
-        }));
-        if (this.toastRef.current && data.result && data.result.length > 0) {
-          this.toastRef.current.show(`Found ${data.result.length} recommendations using ${this.state.modelKey}!`, 'success');
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:data_parsed',message:'Response JSON parsed',data:{has_result:'result' in data,result_type:Array.isArray(data.result)?'array':typeof data.result,result_length:Array.isArray(data.result)?data.result.length:0,response_keys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H5'})}).catch(()=>{});
+        // #endregion
+        console.log('=== Recommendation API Response ===');
+        console.log('Full response:', data);
+        console.log('Response keys:', Object.keys(data));
+        
+        // Handle different response formats
+        let recommendations = [];
+        if (data.result && Array.isArray(data.result)) {
+          recommendations = data.result;
+        } else if (Array.isArray(data)) {
+          recommendations = data;
+        } else if (data.recommendations && Array.isArray(data.recommendations)) {
+          recommendations = data.recommendations;
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Successfully received ${recommendations.length} recommendations`);
+          console.log('Recommendations array:', recommendations);
+          if (recommendations.length > 0) {
+            console.log('First recommendation:', recommendations[0]);
+          }
+        }
+        
+        // Ensure recommendations have required fields
+        const validRecommendations = recommendations.filter(rec => rec && rec.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Valid recommendations: ${validRecommendations.length} out of ${recommendations.length}`);
+        }
+        
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+          this.setState((prevState) => ({
+            fullMovies: prevState.fullMovies,
+            candidates: prevState.candidates,
+            selected: prevState.selected,
+            recommended: validRecommendations,
+            loadingRecommendations: false
+          }));
+        });
+        
+        if (this.toastRef.current) {
+          if (validRecommendations.length > 0) {
+            this.toastRef.current.show(`Found ${validRecommendations.length} recommendations using ${this.state.modelKey}!`, 'success');
+          } else {
+            this.toastRef.current.show('No recommendations found. Try selecting different movies or check if the ML API is running.', 'warning');
+          }
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/61961f3c-ac0b-4150-b807-e993ee0f4c45',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.js:onRecommendClick:catch',message:'Fetch error caught',data:{error_message:error.message,error_name:error.name,elapsed_ms:Date.now()-fetchStartTime},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        console.error('Error fetching recommendations:', error);
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+          this.setState({ loadingRecommendations: false });
+        });
         if (this.toastRef.current) {
-          this.toastRef.current.show('Error fetching recommendations. Please try again.', 'error');
+          const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
+            ? `Cannot connect to backend at ${config.API_URL}. Please ensure the backend server is running on port 5555.`
+            : `Error fetching recommendations: ${error.message || 'Unknown error'}. Please try again.`;
+          this.toastRef.current.show(errorMessage, 'error');
         }
-        this.setState({ loadingRecommendations: false });
       })
   }
 
@@ -255,8 +391,9 @@ class App extends React.Component {
         <Toast ref={this.toastRef} />
         <header className="modern-header">
           <div className="header-left">
-            <div className="header-logo" onClick={this.onRefreshClick}>
+            <div className="header-logo" onClick={this.onRefreshClick} title="Refresh">
               <Icon name='film' className="logo-icon" />
+              <span className="logo-text">MovieRec</span>
             </div>
           </div>
           <div className="header-center">
@@ -264,54 +401,54 @@ class App extends React.Component {
           </div>
           <div className="header-right">
             <div className="recommendation-controls">
+              <Label pointing="right" style={{ color: '#8b9dc3', background: 'transparent', border: 'none' }}>
+                Model:
+              </Label>
               <Dropdown
                 selection
                 compact
                 options={[
                   { key: 'ease', text: 'EASE', value: 'EASE' },
-                  { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
-                  { key: 'neuralmf', text: 'NeuralMF', value: 'NeuralMF' },
-                  { key: 'deepfm', text: 'DeepFM', value: 'DeepFM' },
+                  // ItemKNN temporarily disabled - checkpoint file missing
+                  // { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
+                  // NeuralMF and DeepFM require PyTorch - uncomment when PyTorch is installed
+                  // { key: 'neuralmf', text: 'NeuralMF', value: 'NeuralMF' },
+                  // { key: 'deepfm', text: 'DeepFM', value: 'DeepFM' },
                 ]}
                 value={this.state.modelKey}
                 onChange={(e, data) => this.onModelSelectClick(e, data)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '8px'
-                }}
+                className="model-selector"
               />
               <Button 
                 icon 
                 labelPosition='left' 
-                onClick={this.onRecommendClick}
-                className="primary"
+                onClick={(e) => {
+                  // Prevent blocking - defer handler execution
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTimeout(() => this.onRecommendClick(), 0);
+                }}
+                className="primary recommend-btn"
                 loading={this.state.loadingRecommendations}
                 disabled={this.state.selected.length < 1 || this.state.loadingRecommendations}
+                title={this.state.selected.length < 1 ? 'Select at least one movie first' : 'Get recommendations'}
               >
                 <Icon name='fire' />
                 RECOMMEND
               </Button>
             </div>
-            <div className="author-info">
-              <span>David Omokagbor</span>
-              <a href='https://github.com/DavidOmokagbor1' target="_blank" rel="noopener noreferrer">
-                <Icon name='github' />
-              </a>
-              <a href='https://github.com/DavidOmokagbor1/MOvie-Recommendation' target="_blank" rel="noopener noreferrer">
-                <Icon name='wordpress' />
-              </a>
-            </div>
           </div>
         </header>
-        {/* Search Bar */}
+        
+        {/* Search Bar - Integrated */}
         <div className="search-container">
           <div className="search-wrapper">
             <Input
               type='text'
-              placeholder='Search movies...'
+              placeholder='Search movies by title or genre...'
               className="search-input"
+              icon='search'
+              iconPosition='left'
               value={this.state.searchValue}
               onChange={(e) => this.setState({ searchValue: e.target.value })}
               onKeyPress={(e) => {
@@ -334,75 +471,199 @@ class App extends React.Component {
             <Button 
               className="search-button"
               onClick={() => this.onSearchClick(this.state.searchKey, this.state.searchValue)}
+              disabled={!this.state.searchValue.trim()}
             >
-              <Icon name='search' />
               Search
             </Button>
+            {this.state.searchValue && (
+              <Button 
+                icon
+                className="clear-search"
+                onClick={() => {
+                  this.setState({ searchValue: '' });
+                  this.onSearchClick(this.state.searchKey, '');
+                }}
+                title="Clear search"
+              >
+                <Icon name='times' />
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Main Content */}
-        <Container className="main-container">
+        {/* Main Content - 3-Column Side-by-Side Layout */}
+        <Container className="main-container" style={{ padding: '40px 20px', maxWidth: '1800px' }}>
           {this.state.loadingMovies ? (
             <Dimmer active inverted>
               <Loader size="large">Loading Movies...</Loader>
             </Dimmer>
           ) : (
-            <>
-              <div className="content-section fade-in">
-                <MovieGrid
-                  movies={this.state.candidatesShow}
-                  title="Available Movies"
-                  icon="film"
-                  onAdd={this.onCandidateClick}
-                  onMovieClick={this.onMovieClick}
-                  selectedMovies={this.state.selected}
-                  emptyMessage="No movies found. Try adjusting your search criteria."
-                />
+            <div className="three-column-layout">
+              {/* Column 1: Available Movies */}
+              <div className="column available-column">
+                <div className="movies-section available-section">
+                  <div className="section-header-modern">
+                    <Icon name="film" size="large" />
+                    <div>
+                      <h2>Available Movies</h2>
+                      <p className="section-subtitle">{this.state.candidatesShow.length} movies available</p>
+                    </div>
+                  </div>
+                  {this.state.candidatesShow.length > 0 ? (
+                    <div className="movies-grid scrollable-grid">
+                      {this.state.candidatesShow.map(movie => {
+                        const isSelected = this.state.selected.some(m => m.id === movie.id);
+                        return (
+                          <div key={movie.id} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
+                            <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                              {movie.poster ? (
+                                <img src={movie.poster} alt={movie.title} />
+                              ) : (
+                                <div className="poster-placeholder-modern">
+                                  <Icon name="film" size="big" />
+                                </div>
+                              )}
+                              <div className="movie-overlay">
+                                <Button 
+                                  icon 
+                                  circular 
+                                  size="large"
+                                  className={isSelected ? "remove-btn" : "add-btn"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    this.onCandidateClick(movie);
+                                  }}
+                                >
+                                  <Icon name={isSelected ? "check" : "plus"} />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="movie-info-modern">
+                              <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
+                              <p>{movie.genre} • {movie.date}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Message info className="empty-message-modern">
+                      <Message.Header>No movies found</Message.Header>
+                      <p>Try adjusting your search criteria or click the logo to refresh.</p>
+                    </Message>
+                  )}
+                </div>
               </div>
 
-              {this.state.selected.length > 0 && (
-                <div className="content-section fade-in">
-                  <MovieGrid
-                    movies={this.state.selected}
-                    title="Selected Movies"
-                    icon="heart"
-                    onAdd={this.onSelectedClick}
-                    onMovieClick={this.onMovieClick}
-                    selectedMovies={this.state.selected}
-                    emptyMessage="No movies selected"
-                  />
+              {/* Column 2: Selected Movies */}
+              <div className="column selected-column">
+                <div className="movies-section selected-section">
+                  <div className="section-header-modern">
+                    <Icon name="heart" color="red" size="large" />
+                    <div>
+                      <h2>Selected Movies</h2>
+                      <p className="section-subtitle">{this.state.selected.length} selected</p>
+                    </div>
+                  </div>
+                  {this.state.selected.length > 0 ? (
+                    <div className="movies-grid compact-grid scrollable-grid">
+                      {this.state.selected.map(movie => (
+                        <div key={movie.id} className="movie-card-modern compact">
+                          <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                            {movie.poster ? (
+                              <img src={movie.poster} alt={movie.title} />
+                            ) : (
+                              <div className="poster-placeholder-modern">
+                                <Icon name="film" />
+                              </div>
+                            )}
+                            <div className="movie-overlay">
+                              <Button 
+                                icon 
+                                circular 
+                                size="small"
+                                className="remove-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  this.onSelectedClick(movie);
+                                }}
+                              >
+                                <Icon name="times" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="movie-info-modern">
+                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
+                            <p>{movie.genre}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Message info className="empty-message-modern">
+                      <Message.Header>No Movies Selected</Message.Header>
+                      <p>Click the <Icon name="plus" /> button on movies to add them here.</p>
+                    </Message>
+                  )}
                 </div>
-              )}
-            </>
+              </div>
+
+              {/* Column 3: Recommendations */}
+              <div className="column recommendations-column">
+                <div className="movies-section recommendations-section">
+                  <div className="section-header-modern">
+                    <Icon name="fire" color={this.state.recommended.length > 0 ? "red" : "grey"} size="large" />
+                    <div>
+                      <h2>Recommendations</h2>
+                      <p className="section-subtitle">
+                        {this.state.loadingRecommendations 
+                          ? 'Loading...' 
+                          : this.state.recommended.length > 0 
+                            ? `${this.state.recommended.length} found using ${this.state.modelKey}`
+                            : this.state.selected.length > 0
+                              ? 'Click RECOMMEND to get suggestions'
+                              : 'Select movies first'}
+                      </p>
+                    </div>
+                  </div>
+                  {this.state.loadingRecommendations ? (
+                    <Dimmer active inverted>
+                      <Loader size="large">Loading Recommendations...</Loader>
+                    </Dimmer>
+                  ) : this.state.recommended.length > 0 ? (
+                    <div className="movies-grid compact-grid scrollable-grid">
+                      {this.state.recommended.map(movie => (
+                        <div key={movie.id} className="movie-card-modern compact recommended">
+                          <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                            {movie.poster ? (
+                              <img src={movie.poster} alt={movie.title} />
+                            ) : (
+                              <div className="poster-placeholder-modern">
+                                <Icon name="film" />
+                              </div>
+                            )}
+                            <div className="recommendation-badge">
+                              <Icon name="fire" color="red" />
+                            </div>
+                          </div>
+                          <div className="movie-info-modern">
+                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
+                            <p>{movie.genre} • {movie.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Message info className="empty-message-modern">
+                      <Message.Header>No Recommendations Yet</Message.Header>
+                      <p>Select movies and click RECOMMEND to get personalized recommendations!</p>
+                    </Message>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </Container>
-  
-        {/* Recommendations */}
-        {this.state.recommended.length > 0 && (
-          <div className="recommendations-container fade-in">
-            <Header as="h2" className="recommendations-header">
-              <Icon name="fire" />
-              Recommendations
-            </Header>
-            <div className="content-section">
-              {this.state.loadingRecommendations ? (
-                <Dimmer active inverted>
-                  <Loader size="large">Loading Recommendations...</Loader>
-                </Dimmer>
-              ) : (
-                <MovieGrid
-                  movies={this.state.recommended}
-                  title=""
-                  onAdd={this.onCandidateClick}
-                  onMovieClick={this.onMovieClick}
-                  selectedMovies={this.state.selected}
-                  emptyMessage="No recommendations available"
-                />
-              )}
-            </div>
-          </div>
-        )}
         <footer className="modern-footer">
           <p>&copy; 2024 Movie Recommender System. Built with React & Flask.</p>
         </footer>

@@ -7,7 +7,6 @@ from datetime import datetime
 from app import db
 from app.model import Movie, User, Interaction
 
-
 # Load file, generate id map, update users & movies, update interactions
 
 def load_user_info(info_file):
@@ -38,7 +37,10 @@ def load_item_info(info_file):
         title = line[1][:-7]
         if line[2] == '':
             line[2] = '01-Jan-1900'
-        date = datetime.strptime(line[2], "%d-%b-%Y")
+        try:
+            date = datetime.strptime(line[2], "%d-%b-%Y")
+        except:
+            date = datetime.strptime('01-Jan-1900', "%d-%b-%Y")
         genre_mask = [int(x) for x in line[-19:]]
         genre_idx = np.nonzero(genre_mask)[0]
         genre = ', '.join([genre_list[x] for x in genre_idx])
@@ -65,6 +67,17 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, default='data/ml-100k')
     args = parser.parse_args()
 
+    # Create data dir if it doesn't exist
+    if not os.path.exists(args.data_dir):
+        # Try finding it in the root directory
+        root_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'ml-100k')
+        if os.path.exists(root_data_dir):
+            args.data_dir = root_data_dir
+        else:
+            print(f"Error: Data directory {args.data_dir} not found.")
+            exit(1)
+
+    print(f"Using data from: {args.data_dir}")
     data_file = os.path.join(args.data_dir, 'u.data')
     full_data = pd.read_csv(data_file, delimiter='\t', names=['user', 'item', 'rating', 'timestamp'])
     
@@ -76,47 +89,54 @@ if __name__ == '__main__':
     user_file = os.path.join(args.data_dir, 'u.user')
     user_info_dict = load_user_info(user_file)
     
+    print('Creating database tables...')
+    db.create_all()
+    
     print('Reset existing db...')
-    print(f'{User.query.delete()} users deleted...')
-    print(f'{Movie.query.delete()} movies deleted...')
-    print(f'{Interaction.query.delete()} iteractions deleted...')
+    try:
+        # Delete using SQL to avoid locking issues with SQLAlchemy sessions
+        db.session.execute('DELETE FROM interaction')
+        db.session.execute('DELETE FROM movie')
+        db.session.execute('DELETE FROM "user"')
+        db.session.commit()
+        print("Existing data deleted.")
+    except Exception as e:
+        print(f"Note: Could not delete existing data (normal for first run): {e}")
+        db.session.rollback()
 
     # Add user
+    print('Adding users...')
     for old_u_id in user_id_map:
         user_id = user_id_map[old_u_id]
         user_info = user_info_dict[old_u_id]
         
-        if User.query.filter_by(id=user_id).first():
-            continue
-
         user = User(id=user_id, age=user_info['age'], gender=user_info['gender'])
         db.session.add(user)
     db.session.commit()
 
     # Add movie
+    print('Adding movies...')
     for old_i_id in item_id_map:
         item_id = item_id_map[old_i_id]
         item_info = item_info_dict[old_i_id]
-
-        if Movie.query.filter_by(id=item_id).first():
-            print(Movie.query.filter_by(id=item_id).first())
-            continue
 
         movie = Movie(id=item_id, **item_info)
         db.session.add(movie)
     db.session.commit()
 
+    print('Adding interactions (this may take a minute)...')
     for row in tqdm(full_data.itertuples(), total=len(full_data)):
-        user = user_id_map[row.user]
-        item = item_id_map[row.item]
+        user_id = user_id_map[row.user]
+        movie_id = item_id_map[row.item]
         rating = float(row.rating)
-        timestamp = int(row.rating)
+        timestamp = int(row.timestamp)
 
-        user = User.query.filter_by(id=user).first()
-        item = Movie.query.filter_by(id=item).first()
-
-        I = Interaction(user_id=user.id, movie_id=item.id, rating=rating, timestamp=timestamp)
-        user.movies.append(I)
-        item.users.append(I)
+        I = Interaction(user_id=user_id, movie_id=movie_id, rating=rating, timestamp=timestamp)
         db.session.add(I)
+        
+        # Batch commit every 2000 items to speed up
+        if row.Index % 2000 == 0:
+            db.session.commit()
+            
     db.session.commit()
+    print('Database initialization complete!')

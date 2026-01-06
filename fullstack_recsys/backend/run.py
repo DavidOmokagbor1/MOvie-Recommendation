@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime
 from flask.json import jsonify
 from flask import request
@@ -16,7 +17,13 @@ from tmdb_helper import get_enhanced_movie_details
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-API_ADDRESS = 'http://0.0.0.0:8000%s'
+# Get ML API URL from environment variable, with fallback for local development
+ML_API_BASE = os.getenv('ML_API_URL', 'http://0.0.0.0:8000')
+# Ensure the URL format is correct for string formatting
+if ML_API_BASE.endswith('%s'):
+    API_ADDRESS = ML_API_BASE
+else:
+    API_ADDRESS = f"{ML_API_BASE}%s"
 
 @app.route('/recommend', methods=['POST'])
 def recommend():

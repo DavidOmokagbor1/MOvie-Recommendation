@@ -269,7 +269,7 @@ All endpoints return standard error responses:
 
 Your MongoDB connection string (for reference):
 ```
-mongodb+srv://davidomokagbor_db_user:wbJK8zq0ie8teCNp@movierecommender.x0gaqcb.mongodb.net/?appName=MovieRecommender
+mongodb+srv://username:password@cluster.mongodb.net/?appName=MovieRecommender
 ```
 
 **⚠️ Security Note:** Never expose this connection string publicly. Use environment variables in production.
@@ -347,5 +347,8 @@ fetch('http://localhost:5555/recommend', {
 - Pagination is available for the movies endpoint
 - Search is case-insensitive
 - Genre filtering supports partial matches
+
+
+
 
 

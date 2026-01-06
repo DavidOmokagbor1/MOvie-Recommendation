@@ -4,13 +4,25 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 venv/
 ENV/
+env/
 .venv
-*.egg-info/
-dist/
-build/
 
 # Flask
 instance/
@@ -20,6 +32,26 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
+app.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# React
+react-front/build/
+react-front/.pnp
+react-front/.pnp.js
+react-front/coverage/
+react-front/.eslintcache
 
 # IDE
 .vscode/
@@ -27,34 +59,62 @@ instance/
 *.swp
 *.swo
 *~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# React build
-react-front/build/
-react-front/.eslintcache
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-*.log
-logs/
+# Model checkpoints (large files)
+fullstack_recsys/api/recommend/ckpt/*.npy
+fullstack_recsys/api/recommend/ckpt/*.pth
+fullstack_recsys/api/recommend/ckpt/*.pt
 
 # Temporary files
 *.tmp
 *.temp
-*.bak
+.cache/
 
+# MongoDB
+*.bson
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Backup files
+*.bak
+*.backup
+*~

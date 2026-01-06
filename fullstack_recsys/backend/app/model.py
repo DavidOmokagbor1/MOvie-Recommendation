@@ -62,7 +62,7 @@ class Interaction(db.Model):
     __tablename__ = "Interaction"
 
     user_id = db.Column(db.Integer, db.ForeignKey('User.id'), primary_key=True)
-    movie_id = db.Column(db.String(50),db.ForeignKey('Movie.id'), primary_key=True)
+    movie_id = db.Column(db.Integer, db.ForeignKey('Movie.id'), primary_key=True)
     rating = db.Column(db.Integer)  
     timestamp = db.Column(db.Integer, nullable=True)
     interaction_type = db.Column(db.String(20), nullable=False, default='view')  # view, select, recommend, rate

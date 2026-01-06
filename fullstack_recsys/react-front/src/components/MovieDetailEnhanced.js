@@ -980,3 +980,6 @@ class MovieDetailEnhanced extends React.Component {
 
 export default MovieDetailEnhanced;
 
+
+
+

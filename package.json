@@ -4,14 +4,14 @@
   "description": "Fullstack Movie Recommender System",
   "private": true,
   "scripts": {
-    "install:frontend": "cd react-front && npm install --legacy-peer-deps",
-    "install:backend": "pip3 install -r requirements.txt",
+    "install:frontend": "cd fullstack_recsys/react-front && npm install --legacy-peer-deps",
+    "install:backend": "pip3 install -r fullstack_recsys/backend/requirements.txt",
     "install:all": "npm run install:frontend && npm run install:backend",
-    "start:frontend": "cd react-front && npm start",
-    "start:backend": "cd backend && python3 run.py runserver --host 127.0.0.1 --port 5000",
-    "start:api": "cd api && python3 api.py",
-    "start:all": "cd react-front && npm run start-all",
-    "build": "cd react-front && npm run build"
+    "start:frontend": "cd fullstack_recsys/react-front && npm start",
+    "start:backend": "cd fullstack_recsys/backend && python3 run.py",
+    "start:api": "cd fullstack_recsys/api && python3 api.py",
+    "start:all": "cd fullstack_recsys/react-front && npm run start-all",
+    "build": "cd fullstack_recsys/react-front && npm run build"
   }
 }
 
