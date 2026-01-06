@@ -70,10 +70,15 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Model checkpoints (large files)
+# Model checkpoints (large files - DO NOT COMMIT)
 fullstack_recsys/api/recommend/ckpt/*.npy
+fullstack_recsys/api/recommend/ckpt/*.npz
 fullstack_recsys/api/recommend/ckpt/*.pth
 fullstack_recsys/api/recommend/ckpt/*.pt
+api/recommend/ckpt/*.npy
+api/recommend/ckpt/*.npz
+api/recommend/ckpt/*.pth
+api/recommend/ckpt/*.pt
 
 # Temporary files
 *.tmp
