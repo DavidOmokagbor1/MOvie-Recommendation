@@ -85,11 +85,11 @@ VERCEL_URL=your-vercel-app-url.vercel.app
 - **Runtime**: `Python 3`
 - **Build Command**: 
   ```bash
-  pip install --upgrade pip setuptools wheel && pip install -r ../backend/requirements.txt
+  pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
   ```
 - **Start Command**: 
   ```bash
-  python api.py
+  gunicorn api:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
   ```
 
 **Instance:**
