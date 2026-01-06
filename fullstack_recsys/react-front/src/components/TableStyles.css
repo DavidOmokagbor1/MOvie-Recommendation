@@ -1,0 +1,191 @@
+/* ============================================
+   TABLE COMPONENTS - MODERN STYLING
+   ============================================ */
+
+/* Table Container */
+.scrolling.content {
+  background: transparent;
+}
+
+/* Semantic UI Table Overrides */
+.ui.table {
+  background: transparent !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.ui.table thead th {
+  background: rgba(1, 180, 228, 0.1) !important;
+  color: #01b4e4 !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.5px !important;
+  border-bottom: 2px solid rgba(1, 180, 228, 0.3) !important;
+  padding: 12px 8px !important;
+}
+
+.ui.table tbody td {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: #e0e0e0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 12px 8px !important;
+  vertical-align: middle !important;
+}
+
+.ui.table tbody tr {
+  transition: all 0.2s ease !important;
+}
+
+.ui.table tbody tr:hover {
+  background: rgba(1, 180, 228, 0.1) !important;
+  transform: translateX(2px);
+  cursor: pointer;
+}
+
+.ui.table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Compact Table */
+.ui.compact.table thead th {
+  padding: 10px 6px !important;
+}
+
+.ui.compact.table tbody td {
+  padding: 10px 6px !important;
+}
+
+/* Celled Table */
+.ui.celled.table tbody td {
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.ui.celled.table thead th {
+  border-left: 1px solid rgba(1, 180, 228, 0.2) !important;
+}
+
+/* Table Buttons */
+.ui.table .ui.button {
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ui.table .ui.button.olive {
+  background: rgba(144, 206, 161, 0.2) !important;
+  color: #90cea1 !important;
+  border: 1px solid rgba(144, 206, 161, 0.3) !important;
+}
+
+.ui.table .ui.button.olive:hover {
+  background: rgba(144, 206, 161, 0.4) !important;
+  transform: scale(1.05);
+}
+
+.ui.table .ui.button.inverted.olive {
+  background: transparent !important;
+  color: #90cea1 !important;
+  border: 1px solid rgba(144, 206, 161, 0.5) !important;
+}
+
+.ui.table .ui.button.inverted.olive:hover {
+  background: rgba(144, 206, 161, 0.2) !important;
+}
+
+/* Movie Poster in Table */
+.ui.table img {
+  transition: transform 0.2s ease;
+}
+
+.ui.table tr:hover img {
+  transform: scale(1.05);
+}
+
+/* Empty State */
+.ui.message {
+  background: rgba(20, 24, 35, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #8b9dc3 !important;
+  margin: 40px 20px !important;
+}
+
+.ui.message .header {
+  color: #01b4e4 !important;
+}
+
+.empty-recommendations {
+  text-align: center !important;
+  padding: 60px 40px !important;
+}
+
+.empty-recommendations .header {
+  font-size: 1.3rem !important;
+  margin-bottom: 15px !important;
+}
+
+.empty-recommendations p {
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+}
+
+/* Recommendation Row */
+.recommendation-row {
+  transition: all 0.2s ease !important;
+}
+
+.recommendation-row:hover {
+  background: rgba(255, 107, 53, 0.1) !important;
+  transform: translateX(3px);
+}
+
+.recommendations-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.01) !important;
+}
+
+/* Segment Styling */
+.ui.segment {
+  background: rgba(20, 24, 35, 0.8) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ui.segment.raised {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Header in Segments */
+.ui.segment .ui.header {
+  color: #fff !important;
+}
+
+.ui.segment .ui.header .icon {
+  color: #01b4e4 !important;
+}
+
+.ui.segment .ui.header .sub.header {
+  color: #8b9dc3 !important;
+  font-weight: 400 !important;
+}
+
+/* Scrollbar for Tables */
+.scrolling.content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrolling.content::-webkit-scrollbar-track {
+  background: rgba(20, 24, 35, 0.5);
+  border-radius: 4px;
+}
+
+.scrolling.content::-webkit-scrollbar-thumb {
+  background: rgba(1, 180, 228, 0.3);
+  border-radius: 4px;
+}
+
+.scrolling.content::-webkit-scrollbar-thumb:hover {
+  background: rgba(1, 180, 228, 0.5);
+}
+

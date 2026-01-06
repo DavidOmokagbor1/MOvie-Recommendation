@@ -15,3 +15,6 @@ export PYTHONPATH="$PYTHON_PATH:$PYTHONPATH"
 # Run the script with all arguments passed through
 "$PYTHON_BIN" fetch_real_posters.py "$@"
 
+
+
+

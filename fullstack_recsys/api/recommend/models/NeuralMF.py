@@ -252,6 +252,12 @@ class NeuralMF:
     
     def restore(self, ckpt):
         """Restore model from checkpoint"""
+        if not os.path.exists(ckpt):
+            raise FileNotFoundError(
+                f"NeuralMF checkpoint file not found: {ckpt}\n"
+                f"Please train the model first using fit_offline.py or ensure the checkpoint file exists."
+            )
+        
         checkpoint = torch.load(ckpt, map_location=self.device)
         
         self.num_users = checkpoint['num_users']

@@ -26,11 +26,57 @@ class MongoDBClient:
             import ssl
             import certifi
             
-            # Try multiple connection methods
+            # Validate MongoDB URI before attempting connection
+            mongodb_uri = Config.MONGODB_URI.strip() if Config.MONGODB_URI else ''
+            
+            if not mongodb_uri:
+                logger.error("MONGODB_URI is empty or not set. Cannot connect to MongoDB.")
+                return False
+            
+            if not (mongodb_uri.startswith('mongodb://') or mongodb_uri.startswith('mongodb+srv://')):
+                logger.error(
+                    f"Invalid MongoDB URI format. Must start with 'mongodb://' or 'mongodb+srv://'. "
+                    f"Got: {mongodb_uri[:50]}... (truncated for security)"
+                )
+                return False
+            
+            # Try multiple connection methods (ordered by likelihood of success)
             connection_methods = [
-                # Method 1: Use certifi certificates explicitly
+                # Method 1: Simple connection without ServerApi (most compatible)
                 {
-                    'name': 'certifi certificates',
+                    'name': 'simple connection (no ServerApi)',
+                    'kwargs': {
+                        'tls': True,
+                        'tlsCAFile': certifi.where(),
+                        'connectTimeoutMS': 30000,
+                        'serverSelectionTimeoutMS': 30000,
+                        'socketTimeoutMS': 30000,
+                        'retryWrites': True
+                    }
+                },
+                # Method 2: Simple connection with certifi, no explicit TLS
+                {
+                    'name': 'simple with certifi (no explicit TLS)',
+                    'kwargs': {
+                        'tlsCAFile': certifi.where(),
+                        'connectTimeoutMS': 30000,
+                        'serverSelectionTimeoutMS': 30000,
+                        'socketTimeoutMS': 30000,
+                        'retryWrites': True
+                    }
+                },
+                # Method 3: Minimal options (let URI handle everything)
+                {
+                    'name': 'minimal options',
+                    'kwargs': {
+                        'connectTimeoutMS': 30000,
+                        'serverSelectionTimeoutMS': 30000,
+                        'socketTimeoutMS': 30000
+                    }
+                },
+                # Method 4: Use certifi certificates explicitly with ServerApi
+                {
+                    'name': 'certifi certificates with ServerApi',
                     'kwargs': {
                         'server_api': ServerApi('1'),
                         'tls': True,
@@ -41,9 +87,9 @@ class MongoDBClient:
                         'retryWrites': True
                     }
                 },
-                # Method 2: Standard connection
+                # Method 5: Standard connection with ServerApi
                 {
-                    'name': 'standard connection',
+                    'name': 'standard connection with ServerApi',
                     'kwargs': {
                         'server_api': ServerApi('1'),
                         'tls': True,
@@ -53,22 +99,10 @@ class MongoDBClient:
                         'retryWrites': True
                     }
                 },
-                # Method 3: Without explicit TLS (let URI handle it)
-                {
-                    'name': 'URI-based TLS',
-                    'kwargs': {
-                        'server_api': ServerApi('1'),
-                        'connectTimeoutMS': 30000,
-                        'serverSelectionTimeoutMS': 30000,
-                        'socketTimeoutMS': 30000,
-                        'retryWrites': True
-                    }
-                },
-                # Method 4: Relaxed SSL (last resort for testing)
+                # Method 6: Relaxed SSL (last resort - not recommended for production)
                 {
                     'name': 'relaxed SSL (testing only)',
                     'kwargs': {
-                        'server_api': ServerApi('1'),
                         'tls': True,
                         'tlsAllowInvalidCertificates': True,
                         'connectTimeoutMS': 30000,
@@ -82,8 +116,9 @@ class MongoDBClient:
             for method in connection_methods:
                 try:
                     logger.info(f"Trying connection method: {method['name']}")
+                    logger.debug(f"MongoDB URI: {mongodb_uri[:50]}... (truncated for security)")
                     self._client = MongoClient(
-                        Config.MONGODB_URI,
+                        mongodb_uri,
                         **method['kwargs']
                     )
                     # Test connection
@@ -145,8 +180,13 @@ def get_mongodb():
 
 def init_mongodb(app):
     """Initialize MongoDB connection for Flask app"""
-    # Connect on app initialization
-    mongodb_client.connect()
+    # Connect on app initialization (with error handling)
+    try:
+        mongodb_client.connect()
+        logger.info("MongoDB connection initialized successfully")
+    except Exception as e:
+        logger.warning(f"MongoDB connection failed during init: {e}")
+        # Don't raise - allow app to start with SQLite fallback
     
     @app.teardown_appcontext
     def close_mongodb_connection(error):
