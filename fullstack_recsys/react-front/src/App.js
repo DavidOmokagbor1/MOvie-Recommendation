@@ -74,9 +74,8 @@ class App extends React.Component {
     this.setState({ loadingMovies: true });
     const apiUrl = `${config.API_URL}/init`;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Attempting to load movies from: ${apiUrl}`);
-    }
+    console.log(`[loadMovieDB] Attempting to load movies from: ${apiUrl}`);
+    console.log(`[loadMovieDB] API_URL config:`, config.API_URL);
     
     fetch(apiUrl, {
       method: 'GET',
@@ -85,26 +84,57 @@ class App extends React.Component {
       },
     })
       .then(response => {
+        console.log(`[loadMovieDB] Response status: ${response.status}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
       })
       .then(data => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Successfully loaded ${data.result?.length || 0} movies`);
+        console.log(`[loadMovieDB] Received data:`, data);
+        console.log(`[loadMovieDB] Data keys:`, Object.keys(data));
+        
+        // Ensure data.result is an array
+        let movies = [];
+        if (Array.isArray(data.result)) {
+          movies = data.result;
+        } else if (Array.isArray(data)) {
+          movies = data;
+        } else if (data && data.result) {
+          console.warn('[loadMovieDB] data.result is not an array:', typeof data.result);
+          movies = [];
         }
+        
+        console.log(`[loadMovieDB] Successfully loaded ${movies.length} movies`);
+        if (movies.length > 0) {
+          console.log('[loadMovieDB] Sample movie:', movies[0]);
+        }
+        
+        if (movies.length === 0) {
+          console.warn('[loadMovieDB] No movies received from API');
+          if (this.toastRef.current) {
+            this.toastRef.current.show('No movies found in database. Please check the backend.', 'warning');
+          }
+        }
+        
         this.setState((prevState) => ({
-          fullMovies: data.result,
-          candidates: data.result,
-          candidatesShow: data.result,
+          fullMovies: movies,
+          candidates: movies,
+          candidatesShow: movies,
           selected: prevState.selected,
           recommended: prevState.recommended,
           loadingMovies: false
         }));
+        
+        console.log(`[loadMovieDB] State updated. candidatesShow.length: ${movies.length}`);
       })
       .catch((error) => {
-        console.error('Error loading movies:', error);
+        console.error('[loadMovieDB] Error loading movies:', error);
+        console.error('[loadMovieDB] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         this.setState({ loadingMovies: false });
         if (this.toastRef.current) {
           const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
@@ -170,8 +200,14 @@ class App extends React.Component {
     }
     else {
       const re = new RegExp(_.escapeRegExp(query), "i");
-      const isMatch = type === "title" ? result => re.test(result.title) : result => re.test(result.genre);
-      const results = this.state.candidates.filter(isMatch).filter(data => this.state.candidatesShow.includes(data))
+      const isMatch = type === "title" 
+        ? result => result.title && re.test(result.title) 
+        : result => result.genre && re.test(result.genre);
+      // Filter candidates based on search, using ID comparison instead of object reference
+      const candidateIds = new Set(this.state.candidatesShow.map(m => m.id));
+      const results = this.state.candidates.filter(movie => 
+        isMatch(movie) && candidateIds.has(movie.id)
+      );
       this.setState((prevState) => ({
         ...prevState,
         candidatesShow: results
@@ -382,6 +418,17 @@ class App extends React.Component {
   }
 
   render(){
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[render] State:', {
+        fullMovies: this.state.fullMovies?.length || 0,
+        candidates: this.state.candidates?.length || 0,
+        candidatesShow: this.state.candidatesShow?.length || 0,
+        loadingMovies: this.state.loadingMovies,
+        firstCandidate: this.state.candidatesShow?.[0]
+      });
+    }
+    
     return (
       <div className="App">
         <Toast ref={this.toastRef} />
@@ -507,40 +554,61 @@ class App extends React.Component {
                   </div>
                   {this.state.candidatesShow.length > 0 ? (
                     <div className="movies-grid scrollable-grid">
-                      {this.state.candidatesShow.map(movie => {
-                        const isSelected = this.state.selected.some(m => m.id === movie.id);
-                        return (
-                          <div key={movie.id} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
-                            <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
-                              {movie.poster ? (
-                                <img src={movie.poster} alt={movie.title} />
-                              ) : (
-                                <div className="poster-placeholder-modern">
+                      {this.state.candidatesShow
+                        .filter(movie => movie && movie.id !== undefined && movie.title)
+                        .map(movie => {
+                          const isSelected = this.state.selected.some(m => m.id === movie.id);
+                          // Check if poster URL is valid (not a placeholder that will fail)
+                          const hasValidPoster = movie.poster && 
+                            !movie.poster.includes('via.placeholder.com') && 
+                            movie.poster !== 'null' && 
+                            movie.poster !== null;
+                          
+                          return (
+                            <div key={`movie-${movie.id}`} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
+                              <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                                {hasValidPoster ? (
+                                  <img 
+                                    src={movie.poster} 
+                                    alt={movie.title || 'Movie poster'}
+                                    onError={(e) => {
+                                      // Hide broken image and show placeholder instead
+                                      e.target.style.display = 'none';
+                                      const placeholder = e.target.nextElementSibling;
+                                      if (placeholder && placeholder.classList.contains('poster-placeholder-modern')) {
+                                        placeholder.style.display = 'flex';
+                                      }
+                                    }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className="poster-placeholder-modern" 
+                                  style={{ display: hasValidPoster ? 'none' : 'flex' }}
+                                >
                                   <Icon name="film" size="big" />
                                 </div>
-                              )}
-                              <div className="movie-overlay">
-                                <Button 
-                                  icon 
-                                  circular 
-                                  size="large"
-                                  className={isSelected ? "remove-btn" : "add-btn"}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    this.onCandidateClick(movie);
-                                  }}
-                                >
-                                  <Icon name={isSelected ? "check" : "plus"} />
-                                </Button>
+                                <div className="movie-overlay">
+                                  <Button 
+                                    icon 
+                                    circular 
+                                    size="large"
+                                    className={isSelected ? "remove-btn" : "add-btn"}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      this.onCandidateClick(movie);
+                                    }}
+                                  >
+                                    <Icon name={isSelected ? "check" : "plus"} />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="movie-info-modern">
+                                <h3 onClick={() => this.onMovieClick(movie)}>{movie.title || 'Unknown Title'}</h3>
+                                <p>{movie.genre || 'Unknown'} • {movie.date || 'Unknown'}</p>
                               </div>
                             </div>
-                            <div className="movie-info-modern">
-                              <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
-                              <p>{movie.genre} • {movie.date}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   ) : (
                     <Message info className="empty-message-modern">
@@ -628,26 +696,45 @@ class App extends React.Component {
                     </Dimmer>
                   ) : this.state.recommended.length > 0 ? (
                     <div className="movies-grid compact-grid scrollable-grid">
-                      {this.state.recommended.map(movie => (
-                        <div key={movie.id} className="movie-card-modern compact recommended">
-                          <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
-                            {movie.poster ? (
-                              <img src={movie.poster} alt={movie.title} />
-                            ) : (
-                              <div className="poster-placeholder-modern">
+                      {this.state.recommended.map(movie => {
+                        const hasValidPoster = movie.poster && 
+                          !movie.poster.includes('via.placeholder.com') && 
+                          movie.poster !== 'null' && 
+                          movie.poster !== null;
+                        
+                        return (
+                          <div key={movie.id} className="movie-card-modern compact recommended">
+                            <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                              {hasValidPoster ? (
+                                <img 
+                                  src={movie.poster} 
+                                  alt={movie.title}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    const placeholder = e.target.nextElementSibling;
+                                    if (placeholder && placeholder.classList.contains('poster-placeholder-modern')) {
+                                      placeholder.style.display = 'flex';
+                                    }
+                                  }}
+                                />
+                              ) : null}
+                              <div 
+                                className="poster-placeholder-modern" 
+                                style={{ display: hasValidPoster ? 'none' : 'flex' }}
+                              >
                                 <Icon name="film" />
                               </div>
-                            )}
-                            <div className="recommendation-badge">
-                              <Icon name="fire" color="red" />
+                              <div className="recommendation-badge">
+                                <Icon name="fire" color="red" />
+                              </div>
+                            </div>
+                            <div className="movie-info-modern">
+                              <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
+                              <p>{movie.genre} • {movie.date}</p>
                             </div>
                           </div>
-                          <div className="movie-info-modern">
-                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
-                            <p>{movie.genre} • {movie.date}</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <Message info className="empty-message-modern">
