@@ -295,14 +295,10 @@ class App extends React.Component {
     
     if (process.env.NODE_ENV === 'development') {
     console.log(`=== Recommendation Request ===`);
-    }
-    if (process.env.NODE_ENV === 'development') {
     console.log(`URL: ${recommendUrl}`);
     }
     if (process.env.NODE_ENV === 'development') {
     console.log(`Model: ${selectedModel}`);
-    }
-    if (process.env.NODE_ENV === 'development') {
     console.log(`Context IDs:`, context_ids);
     }
     if (process.env.NODE_ENV === 'development') {
@@ -321,8 +317,6 @@ class App extends React.Component {
       .then(data => {
         if (process.env.NODE_ENV === 'development') {
         console.log('=== Recommendation API Response ===');
-        }
-        if (process.env.NODE_ENV === 'development') {
         console.log('Full response:', data);
         }
         if (process.env.NODE_ENV === 'development') {
