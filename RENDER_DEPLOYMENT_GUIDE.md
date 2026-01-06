@@ -2,6 +2,8 @@
 
 This guide provides step-by-step instructions for deploying both the backend and ML API services to Render.
 
+> **Important**: All deployments use the `master` branch exclusively. No other branches are supported for production deployment.
+
 ## Prerequisites
 
 - GitHub repository: `DavidOmokagbor1/MOvie-Recommendation` (up to date)
@@ -22,7 +24,7 @@ This guide provides step-by-step instructions for deploying both the backend and
 **Basic Settings:**
 - **Name**: `movie-recommender-backend`
 - **Region**: Choose closest to you (e.g., Oregon US West)
-- **Branch**: `master` (or your main branch)
+- **Branch**: `master`
 - **Root Directory**: `fullstack_recsys/backend`
 
 **Build & Deploy:**

@@ -244,8 +244,11 @@ npm start
 
 ### Deployment Configuration
 
+All services deploy from the `master` branch only.
+
 **Backend (Render)**
 - Root Directory: `fullstack_recsys/backend`
+- Branch: `master`
 - Build Command: `pip install --upgrade pip setuptools wheel && pip install -r requirements.txt`
 - Start Command: `gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
 - Environment Variables:
@@ -255,6 +258,7 @@ npm start
 
 **Frontend (Vercel)**
 - Root Directory: `react-front`
+- Branch: `master`
 - Build Command: `npm run build`
 - Environment Variables:
   - `REACT_APP_API_URL` - Backend API URL
@@ -262,10 +266,13 @@ npm start
 
 **ML API (Render)**
 - Root Directory: `fullstack_recsys/api`
+- Branch: `master`
 - Build Command: `pip install -r requirements.txt`
 - Start Command: `gunicorn api:app --bind 0.0.0.0:$PORT`
 
 See [RENDER_DEPLOYMENT_GUIDE.md](RENDER_DEPLOYMENT_GUIDE.md) for detailed deployment instructions.
+
+> **Branch Policy**: All production deployments use the `master` branch exclusively.
 
 ---
 
