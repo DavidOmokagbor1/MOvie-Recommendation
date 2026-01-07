@@ -426,10 +426,12 @@ class App extends React.Component {
   render(){
     // Debug logging
     if (process.env.NODE_ENV === 'development') {
+      const filteredMovies = this.state.candidatesShow?.filter(movie => movie && movie.id !== undefined && movie.id !== null && movie.title) || [];
       console.log('[render] State:', {
         fullMovies: this.state.fullMovies?.length || 0,
         candidates: this.state.candidates?.length || 0,
         candidatesShow: this.state.candidatesShow?.length || 0,
+        filteredMovies: filteredMovies.length,
         loadingMovies: this.state.loadingMovies,
         firstCandidate: this.state.candidatesShow?.[0]
       });
