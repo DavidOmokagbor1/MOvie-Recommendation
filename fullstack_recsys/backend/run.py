@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get ML API URL from environment variable, with fallback for local development
-ML_API_BASE = os.getenv('ML_API_URL', 'http://0.0.0.0:8000')
+ML_API_BASE = os.getenv('ML_API_URL', 'http://localhost:8000')
 # Ensure the URL format is correct for string formatting
 if ML_API_BASE.endswith('%s'):
     API_ADDRESS = ML_API_BASE

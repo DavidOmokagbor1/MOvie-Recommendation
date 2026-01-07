@@ -465,7 +465,6 @@ class App extends React.Component {
                 compact
                 options={[
                   { key: 'ease', text: 'EASE', value: 'EASE' },
-                  // ItemKNN enabled - checkpoint file exists
                   { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
                   // NeuralMF and DeepFM require PyTorch - uncomment when PyTorch is installed
                   // { key: 'neuralmf', text: 'NeuralMF', value: 'NeuralMF' },

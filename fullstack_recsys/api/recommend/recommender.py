@@ -27,6 +27,16 @@ class RecommenderWrapper:
             # Restore model from checkpoint
             checkpoint_path = model_to_ckpt[new_model]
             logger.info(f"Loading checkpoint from: {checkpoint_path}")
+            
+            # Check if checkpoint file exists
+            import os
+            if not os.path.exists(checkpoint_path):
+                raise FileNotFoundError(
+                    f"Checkpoint file not found: {checkpoint_path}. "
+                    f"Please train the {new_model} model first using: "
+                    f"python fit_offline.py --model {new_model} --save_dir recommend/ckpt"
+                )
+            
             self.model.restore(checkpoint_path)
             logger.info(f"Successfully loaded model: {new_model}")
         else:
