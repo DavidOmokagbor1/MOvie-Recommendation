@@ -207,13 +207,16 @@ class App extends React.Component {
     else {
       const re = new RegExp(_.escapeRegExp(query), "i");
       const isMatch = type === "title" 
-        ? result => result.title && re.test(result.title) 
-        : result => result.genre && re.test(result.genre);
-      // Filter candidates based on search, using ID comparison instead of object reference
-      const candidateIds = new Set(this.state.candidatesShow.map(m => m.id));
-      const results = this.state.candidates.filter(movie => 
-        isMatch(movie) && candidateIds.has(movie.id)
-      );
+        ? result => result && result.title && typeof result.title === 'string' && re.test(result.title) 
+        : result => result && result.genre && typeof result.genre === 'string' && re.test(result.genre);
+      // Filter candidates based on search - search through ALL candidates, exclude selected ones
+      const selectedIds = new Set(this.state.selected.map(m => m?.id).filter(id => id !== undefined && id !== null));
+      const results = this.state.candidates.filter(movie => {
+        // Only show movies that match search AND are not currently selected
+        const matchesSearch = isMatch(movie);
+        const notSelected = movie && movie.id !== undefined && movie.id !== null && !selectedIds.has(movie.id);
+        return matchesSearch && notSelected;
+      });
       this.setState((prevState) => ({
         ...prevState,
         candidatesShow: results
@@ -424,16 +427,24 @@ class App extends React.Component {
   }
 
   render(){
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      const filteredMovies = this.state.candidatesShow?.filter(movie => movie && movie.id !== undefined && movie.id !== null && movie.title) || [];
-      console.log('[render] State:', {
-        fullMovies: this.state.fullMovies?.length || 0,
-        candidates: this.state.candidates?.length || 0,
-        candidatesShow: this.state.candidatesShow?.length || 0,
-        filteredMovies: filteredMovies.length,
-        loadingMovies: this.state.loadingMovies,
-        firstCandidate: this.state.candidatesShow?.[0]
+    // Debug logging - always log to help diagnose issues
+    const filteredMovies = this.state.candidatesShow?.filter(movie => movie && movie.id !== undefined && movie.id !== null && movie.title) || [];
+    console.log('[render] State:', {
+      fullMovies: this.state.fullMovies?.length || 0,
+      candidates: this.state.candidates?.length || 0,
+      candidatesShow: this.state.candidatesShow?.length || 0,
+      filteredMovies: filteredMovies.length,
+      loadingMovies: this.state.loadingMovies,
+      firstCandidate: this.state.candidatesShow?.[0],
+      firstFiltered: filteredMovies[0]
+    });
+    
+    // Log if there's a mismatch
+    if (this.state.candidatesShow?.length > 0 && filteredMovies.length === 0) {
+      console.error('[render] ERROR: candidatesShow has items but filter removes all!', {
+        sampleMovie: this.state.candidatesShow[0],
+        sampleHasId: this.state.candidatesShow[0]?.id !== undefined,
+        sampleHasTitle: !!this.state.candidatesShow[0]?.title
       });
     }
     
