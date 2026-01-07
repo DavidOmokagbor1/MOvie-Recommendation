@@ -614,6 +614,18 @@ class App extends React.Component {
                                 >
                                   <Icon name="film" size="big" />
                                 </div>
+                                {/* Always visible add button in top-right */}
+                                <div 
+                                  className="add-button-badge"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    this.onCandidateClick(movie);
+                                  }}
+                                  title={isSelected ? "Remove from selection" : "Add to selection"}
+                                >
+                                  <Icon name={isSelected ? "check circle" : "plus circle"} size="large" />
+                                </div>
+                                {/* Overlay with button on hover */}
                                 <div className="movie-overlay">
                                   <Button 
                                     icon 
@@ -624,6 +636,7 @@ class App extends React.Component {
                                       e.stopPropagation();
                                       this.onCandidateClick(movie);
                                     }}
+                                    title={isSelected ? "Remove from selection" : "Add to selection"}
                                   >
                                     <Icon name={isSelected ? "check" : "plus"} />
                                   </Button>
