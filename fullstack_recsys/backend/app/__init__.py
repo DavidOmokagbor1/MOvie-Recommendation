@@ -1,10 +1,14 @@
 import os
 import logging
+from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_cors import CORS
+
+# Load environment variables from .env file before importing Config
+load_dotenv()
 
 from config import Config, BASE_DIR
 from mongodb_client import mongodb_client, init_mongodb
