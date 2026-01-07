@@ -31,14 +31,11 @@ fi
 echo "3️⃣  Checking MongoDB configuration..."
 cd /Users/java/.cursor/worktrees/MOVIE-RECOMMENDER/jik/fullstack_recsys/backend
 if [ ! -f .env ]; then
-    echo "   ❌ .env file not found! Creating it..."
-    cat > .env << 'EOF'
-MONGODB_URI=mongodb+srv://username:password@movierecommender.x0gaqcb.mongodb.net/?appName=MovieRecommender
-MONGODB_DB_NAME=movierecommender
-FLASK_ENV=development
-SECRET_KEY=dev-secret-key-change-in-production
-EOF
-    echo "   ✅ .env file created"
+    echo "   ❌ .env file not found!"
+    echo "   ⚠️  Please create .env file manually with your MongoDB credentials"
+    echo "   📝 Copy env.example to .env and fill in your values:"
+    echo "      cp env.example .env"
+    echo "      # Then edit .env with your MongoDB URI"
 else
     echo "   ✅ .env file exists"
 fi
