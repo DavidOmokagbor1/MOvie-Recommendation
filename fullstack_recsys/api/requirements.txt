@@ -8,6 +8,7 @@ scikit-learn==0.24.2
 pandas==1.1.4
 tqdm==4.54.1
 requests==2.31.0
+gunicorn==21.2.0
 
 # PyTorch for neural models (NeuralMF, DeepFM) - OPTIONAL
 # The API will work with EASE and ItemKNN without PyTorch
