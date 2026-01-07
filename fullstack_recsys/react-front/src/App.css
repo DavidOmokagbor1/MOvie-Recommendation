@@ -253,6 +253,7 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
   height: calc(100vh - 280px);
+  min-height: 600px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -318,8 +319,9 @@
    ============================================ */
 .movies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
+  /* Show more movies per row - smaller cards, more visible at once */
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 8px;
@@ -406,6 +408,8 @@
   aspect-ratio: 2/3;
   overflow: hidden;
   background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+  /* Ensure poster doesn't take too much space */
+  min-height: 0;
 }
 
 .movie-poster-modern img {
@@ -654,12 +658,14 @@
   }
   
   .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 12px;
+    /* On smaller screens, still show multiple movies */
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
   }
   
   .compact-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
   }
 }
 
