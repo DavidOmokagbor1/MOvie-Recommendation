@@ -252,9 +252,11 @@
   padding: 24px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
-  height: calc(100vh - 280px);
+  min-height: calc(100vh - 280px);
+  max-height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .column:hover {
@@ -279,6 +281,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .section-header-modern {
@@ -318,8 +321,11 @@
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 8px;
   flex: 1;
+  min-height: 0;
+  grid-auto-rows: auto;
 }
 
 .movies-grid::-webkit-scrollbar {
@@ -346,8 +352,10 @@
 }
 
 .scrollable-grid {
-  max-height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* ============================================
