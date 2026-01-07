@@ -108,12 +108,18 @@ class App extends React.Component {
         console.log(`[loadMovieDB] Successfully loaded ${movies.length} movies`);
         if (movies.length > 0) {
           console.log('[loadMovieDB] Sample movie:', movies[0]);
+          // Log poster info for debugging
+          const moviesWithPosters = movies.filter(m => m.poster && m.poster !== 'null' && m.poster !== null);
+          console.log(`[loadMovieDB] Movies with posters: ${moviesWithPosters.length} out of ${movies.length}`);
+          if (moviesWithPosters.length > 0) {
+            console.log('[loadMovieDB] Sample poster URL:', moviesWithPosters[0].poster);
+          }
         }
         
         if (movies.length === 0) {
           console.warn('[loadMovieDB] No movies received from API');
           if (this.toastRef.current) {
-            this.toastRef.current.show('No movies found in database. Please check the backend.', 'warning');
+            this.toastRef.current.show('No movies found in database. Please check the backend server is running on port 5555.', 'warning');
           }
         }
         
@@ -559,11 +565,13 @@ class App extends React.Component {
                         .map(movie => {
                           const isSelected = this.state.selected.some(m => m.id === movie.id);
                           // Check if poster URL is valid (not a placeholder that will fail)
+                          // Allow any valid URL, only filter out known problematic placeholders
                           const hasValidPoster = movie.poster && 
                             typeof movie.poster === 'string' &&
                             movie.poster.trim().length > 0 &&
-                            !movie.poster.includes('via.placeholder.com') && 
-                            movie.poster !== 'null';
+                            movie.poster !== 'null' &&
+                            movie.poster !== 'None' &&
+                            !movie.poster.includes('via.placeholder.com');
                           
                           return (
                             <div key={`movie-${movie.id}`} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
@@ -640,8 +648,9 @@ class App extends React.Component {
                         const hasValidPoster = movie.poster && 
                           typeof movie.poster === 'string' &&
                           movie.poster.trim().length > 0 &&
-                          !movie.poster.includes('via.placeholder.com') && 
-                          movie.poster !== 'null';
+                          movie.poster !== 'null' &&
+                          movie.poster !== 'None' &&
+                          !movie.poster.includes('via.placeholder.com');
                         
                         return (
                           <div key={movie.id} className="movie-card-modern compact">
@@ -729,8 +738,9 @@ class App extends React.Component {
                         const hasValidPoster = movie.poster && 
                           typeof movie.poster === 'string' &&
                           movie.poster.trim().length > 0 &&
-                          !movie.poster.includes('via.placeholder.com') && 
-                          movie.poster !== 'null';
+                          movie.poster !== 'null' &&
+                          movie.poster !== 'None' &&
+                          !movie.poster.includes('via.placeholder.com');
                         
                         return (
                           <div key={movie.id} className="movie-card-modern compact recommended">
