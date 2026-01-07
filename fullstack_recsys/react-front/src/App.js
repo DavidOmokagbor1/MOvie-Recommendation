@@ -587,12 +587,20 @@ class App extends React.Component {
                                   <img 
                                     src={movie.poster} 
                                     alt={movie.title || 'Movie poster'}
+                                    loading="lazy"
                                     onError={(e) => {
                                       // Hide broken image and show placeholder instead
                                       try {
-                                        e.target.style.display = 'none';
-                                        const placeholder = e.target.nextElementSibling;
-                                        if (placeholder && placeholder.classList && placeholder.classList.contains('poster-placeholder-modern')) {
+                                        const img = e.target;
+                                        img.style.display = 'none';
+                                        // Prevent further retry attempts
+                                        img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
+                                        // Find placeholder - try nextElementSibling first, then parent querySelector
+                                        let placeholder = img.nextElementSibling;
+                                        if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
+                                          placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
+                                        }
+                                        if (placeholder) {
                                           placeholder.style.display = 'flex';
                                         }
                                       } catch (error) {
@@ -666,11 +674,19 @@ class App extends React.Component {
                                 <img 
                                   src={movie.poster} 
                                   alt={movie.title}
+                                  loading="lazy"
                                   onError={(e) => {
                                     try {
-                                      e.target.style.display = 'none';
-                                      const placeholder = e.target.nextElementSibling;
-                                      if (placeholder && placeholder.classList && placeholder.classList.contains('poster-placeholder-modern')) {
+                                      const img = e.target;
+                                      img.style.display = 'none';
+                                      // Prevent further retry attempts
+                                      img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
+                                      // Find placeholder - try nextElementSibling first, then parent querySelector
+                                      let placeholder = img.nextElementSibling;
+                                      if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
+                                        placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
+                                      }
+                                      if (placeholder) {
                                         placeholder.style.display = 'flex';
                                       }
                                     } catch (error) {
@@ -756,11 +772,19 @@ class App extends React.Component {
                                 <img 
                                   src={movie.poster} 
                                   alt={movie.title}
+                                  loading="lazy"
                                   onError={(e) => {
                                     try {
-                                      e.target.style.display = 'none';
-                                      const placeholder = e.target.nextElementSibling;
-                                      if (placeholder && placeholder.classList && placeholder.classList.contains('poster-placeholder-modern')) {
+                                      const img = e.target;
+                                      img.style.display = 'none';
+                                      // Prevent further retry attempts
+                                      img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
+                                      // Find placeholder - try nextElementSibling first, then parent querySelector
+                                      let placeholder = img.nextElementSibling;
+                                      if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
+                                        placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
+                                      }
+                                      if (placeholder) {
                                         placeholder.style.display = 'flex';
                                       }
                                     } catch (error) {
