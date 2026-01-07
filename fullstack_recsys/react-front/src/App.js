@@ -2,14 +2,9 @@ import React from 'react';
 // import logo from './logo.svg';
 import './App.css';
 import config from './config';
-import CandidateTable from './components/CandidateTable'
-import ContextTable from './components/ContextTable'
-import RecommendTable from './components/RecommendTable'
-import SearchForm from './components/SearchForm'
 import Toast from './components/Toast'
 import MovieDetailEnhanced from './components/MovieDetailEnhanced'
-import MovieGrid from './components/MovieGrid'
-import { Container, Icon, Button, Grid, Modal, Header, Label, Loader, Dimmer, Segment, Dropdown, Message, Input, Divider } from "semantic-ui-react"
+import { Container, Icon, Button, Modal, Label, Loader, Dimmer, Dropdown, Message, Input } from "semantic-ui-react"
 import _ from "lodash";
 
 class App extends React.Component {
@@ -351,7 +346,6 @@ class App extends React.Component {
     }
     
     // Use async fetch - non-blocking
-    const fetchStartTime = Date.now();
     fetch(recommendUrl, requestOptions)
       .then(response => {
         if (!response.ok) {
