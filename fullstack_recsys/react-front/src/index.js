@@ -6,10 +6,10 @@ import reportWebVitals from './reportWebVitals';
 import 'semantic-ui-css/semantic.min.css'
 
 
+// Temporarily disable StrictMode to avoid findDOMNode warnings from semantic-ui-react
+// This is a known issue with older versions of semantic-ui-react
 ReactDOM.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <App />,
   document.getElementById('root')
 );
 

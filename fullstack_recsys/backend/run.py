@@ -90,6 +90,99 @@ def recommend():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
+@app.route('/api/trending', methods=['GET'])
+def get_trending():
+	"""Get trending movies - either from TMDB API or sorted by date"""
+	try:
+		# Try to get trending from TMDB if API key is available
+		tmdb_api_key = os.getenv('TMDB_API_KEY')
+		if tmdb_api_key:
+			try:
+				trending_url = 'https://api.themoviedb.org/3/trending/movie/week'
+				params = {
+					'api_key': tmdb_api_key,
+					'language': 'en-US'
+				}
+				response = requests.get(trending_url, params=params, timeout=10)
+				if response.status_code == 200:
+					data = response.json()
+					trending_tmdb = data.get('results', [])[:10]
+					
+					# Map TMDB movies to our format
+					trending_movies = []
+					for tmdb_movie in trending_tmdb:
+						# Try to find matching movie in our database by title
+						all_movies = get_all_movies()
+						matching = next((m for m in all_movies if m.get('title', '').lower() == tmdb_movie.get('title', '').lower()), None)
+						
+						if matching:
+							# Use our database movie but update poster if TMDB has better one
+							if tmdb_movie.get('poster_path'):
+								matching['poster'] = f"https://image.tmdb.org/t/p/w500{tmdb_movie.get('poster_path')}"
+							trending_movies.append(matching)
+						else:
+							# Create movie entry from TMDB data
+							# Handle genre_ids - they're integers, not objects
+							genre_ids = tmdb_movie.get('genre_ids', [])
+							genre_str = 'Action'  # Default, since we can't map IDs without genre lookup
+							
+							trending_movies.append({
+								'id': f"tmdb_{tmdb_movie.get('id')}",
+								'title': tmdb_movie.get('title'),
+								'genre': genre_str,
+								'date': tmdb_movie.get('release_date', ''),
+								'poster': f"https://image.tmdb.org/t/p/w500{tmdb_movie.get('poster_path')}" if tmdb_movie.get('poster_path') else None
+							})
+					
+					if trending_movies:
+						return jsonify({'result': trending_movies}), 200
+			except Exception as e:
+				logger.warning(f"TMDB trending API error: {e}, falling back to date-based sorting")
+		
+		# Fallback: Get movies sorted by date (most recent)
+		all_items = get_all_movies()
+		# Filter movies with valid posters
+		movies_with_posters = [
+			m for m in all_items 
+			if m and m.get('poster') and 
+			m.get('poster') != 'null' and 
+			m.get('poster') != 'None' and
+			'via.placeholder.com' not in str(m.get('poster', ''))
+		]
+		
+		# Sort by date (most recent first), handle missing dates
+		def get_date_sort_key(movie):
+			date_str = movie.get('date', '') or ''
+			if not date_str:
+				return '0000-01-01'  # Put movies without dates at the end
+			# Try to parse date, return as-is if it's already a string
+			try:
+				# If it's already YYYY-MM-DD format, use it directly
+				if len(date_str) >= 10 and date_str[4] == '-':
+					return date_str[:10]
+				# Try to parse other formats
+				from datetime import datetime
+				parsed = datetime.strptime(date_str[:10], '%Y-%m-%d')
+				return parsed.strftime('%Y-%m-%d')
+			except:
+				return date_str[:10] if len(date_str) >= 10 else '0000-01-01'
+		
+		trending = sorted(
+			movies_with_posters,
+			key=get_date_sort_key,
+			reverse=True
+		)[:10]
+		
+		logger.info(f"Returning {len(trending)} trending movies (date-based)")
+		return jsonify({'result': trending}), 200
+		
+	except Exception as e:
+		logger.error(f"Trending error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to get trending movies',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
 @app.route('/init', methods=['GET'])
 def init():
 	"""Initialize and return all movies"""

@@ -2,16 +2,28 @@
    MODERN 2026 UI DESIGN - MOVIE RECOMMENDER
    ============================================ */
 
-/* Global App Container */
+/* Global App Container - Modern 2026 Background */
 .App {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #0d1117 100%);
+  background: #0a0a0f;
+  background-image: 
+    /* Modern mesh gradient - top left */
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(1, 180, 228, 0.15) 0%, transparent 50%),
+    /* Modern mesh gradient - top right */
+    radial-gradient(ellipse 80% 50% at 100% 0%, rgba(144, 206, 161, 0.12) 0%, transparent 50%),
+    /* Modern mesh gradient - bottom left */
+    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(229, 9, 20, 0.1) 0%, transparent 50%),
+    /* Modern mesh gradient - bottom right */
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(138, 43, 226, 0.08) 0%, transparent 50%),
+    /* Base gradient overlay */
+    linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 25%, #0f0f1a 50%, #1a1a2e 75%, #0f0f1a 100%);
+  background-size: 100% 100%;
   background-attachment: fixed;
   position: relative;
   overflow-x: hidden;
 }
 
-/* Animated Background Gradient */
+/* Modern 2026 Animated Mesh Overlay */
 .App::before {
   content: '';
   position: fixed;
@@ -20,11 +32,32 @@
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle at 20% 50%, rgba(1, 180, 228, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 40% 20%, rgba(144, 206, 161, 0.1) 0%, transparent 50%);
+    /* Subtle animated mesh pattern */
+    radial-gradient(circle at 20% 30%, rgba(1, 180, 228, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(144, 206, 161, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(229, 9, 20, 0.04) 0%, transparent 40%),
+    /* Subtle noise texture */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.01) 2px,
+      rgba(255, 255, 255, 0.01) 4px
+    );
   pointer-events: none;
   z-index: 0;
+  animation: meshMove 20s ease-in-out infinite;
+}
+
+@keyframes meshMove {
+  0%, 100% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(10px, 10px);
+  }
 }
 
 /* ============================================
@@ -34,7 +67,7 @@
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(10, 14, 26, 0.85);
+  background: rgba(15, 15, 26, 0.7);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -42,7 +75,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   transition: all 0.3s ease;
 }
 
@@ -160,9 +193,13 @@
    ============================================ */
 .search-container {
   padding: 24px 40px;
-  background: rgba(10, 14, 26, 0.6);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 15, 26, 0.5);
+  backdrop-filter: blur(15px) saturate(150%);
+  -webkit-backdrop-filter: blur(15px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
 }
 
 .search-wrapper {
@@ -231,18 +268,291 @@
 .main-container {
   position: relative;
   z-index: 1;
-  padding: 40px 20px !important;
-  max-width: 1800px !important;
+  padding: 40px 12px !important;
+  max-width: 100% !important;
   margin: 0 auto !important;
+  background: transparent;
+  width: 100%;
 }
 
-.three-column-layout {
-  display: grid;
-  /* Premium layout: More space for browsing, compact sidebars */
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 16px;
-  align-items: flex-start;
-  min-height: calc(100vh - 280px);
+/* Rotten Tomatoes Style Layout - Single Column with Horizontal Carousels */
+.rottentomatoes-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding: 24px 4px;
+  max-width: 100%;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
+   TRENDING HERO SECTION - Auto-Sliding
+   ============================================ */
+.trending-hero-section {
+  width: 100%;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.trending-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 8px;
+}
+
+.trending-title {
+  color: #ffffff !important;
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.trending-subtitle {
+  color: #d0d0d0 !important;
+  font-size: 1rem !important;
+  margin: 8px 0 0 0 !important;
+  font-weight: 400 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.trending-indicators {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.trending-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.trending-dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.2);
+}
+
+.trending-dot.active {
+  background: #01b4e4;
+  width: 24px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(1, 180, 228, 0.6);
+}
+
+.trending-carousel-container {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  position: relative;
+  height: 320px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.trending-carousel {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trending-slide {
+  min-width: 100%;
+  height: 100%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.trending-poster {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+}
+
+.trending-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.trending-poster:hover img {
+  transform: scale(1.05);
+}
+
+.trending-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+}
+
+.trending-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.7) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  padding: 20px 24px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.trending-content {
+  width: 100%;
+  max-width: 800px;
+}
+
+.trending-movie-title {
+  color: #ffffff !important;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  margin: 0 0 6px 0 !important;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.trending-movie-info {
+  color: #e0e0e0 !important;
+  font-size: 0.85rem !important;
+  margin: 0 0 12px 0 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  font-weight: 500 !important;
+}
+
+.trending-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trending-add-btn,
+.trending-info-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  padding: 14px 28px !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+}
+
+.trending-add-btn:hover {
+  background: rgba(1, 180, 228, 0.9) !important;
+  border-color: #01b4e4 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(1, 180, 228, 0.5) !important;
+}
+
+.trending-info-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive Trending Section */
+@media (max-width: 768px) {
+  .trending-carousel-container {
+    height: 200px;
+  }
+  
+  .trending-movie-title {
+    font-size: 1.1rem !important;
+  }
+  
+  .trending-movie-info {
+    font-size: 0.8rem !important;
+  }
+  
+  .trending-overlay {
+    padding: 12px;
+  }
+  
+  .trending-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .trending-title {
+    font-size: 1.2rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .trending-carousel-container {
+    height: 180px;
+  }
+  
+  .trending-movie-title {
+    font-size: 1rem !important;
+  }
+  
+  .trending-overlay {
+    padding: 10px;
+  }
+}
+
+/* Rotten Tomatoes Style Section Headers */
+.rt-section {
+  margin-bottom: 0;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.rt-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 0 8px;
+  padding-bottom: 0;
+  border-bottom: none;
+  position: relative;
+}
+
+.rt-section-title {
+  color: #ffffff !important;
+  font-size: 1.75rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.rt-section-subtitle {
+  color: #d0d0d0 !important;
+  font-size: 0.95rem !important;
+  margin: 8px 0 0 0 !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .column {
@@ -333,6 +643,40 @@
 /* ============================================
    MOVIE GRIDS
    ============================================ */
+
+/* Rotten Tomatoes Style - Horizontal Scrolling Carousel */
+.movies-carousel {
+  display: flex !important;
+  gap: 16px !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 24px 8px !important;
+  scroll-behavior: smooth;
+  width: 100%;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.movies-carousel::-webkit-scrollbar {
+  height: 8px;
+}
+
+.movies-carousel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.movies-carousel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.movies-carousel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
 .movies-grid {
   display: grid;
   /* Premium standard: Ultra-compact cards matching Rotten Tomatoes/Netflix (8-10 per row) */
@@ -390,15 +734,43 @@
 /* ============================================
    MOVIE CARDS
    ============================================ */
-.movie-card-modern {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+/* Rotten Tomatoes Style Card - Horizontal Carousel (Optimized Size) */
+.movie-card-carousel {
+  flex: 0 0 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
+  background: transparent !important;
+  border: none !important;
+  overflow: visible;
+  transition: transform 0.3s ease;
   cursor: pointer;
   position: relative;
-  backdrop-filter: blur(10px);
+  margin-right: 0;
+}
+
+.movie-card-carousel:hover {
+  transform: translateY(-8px);
+}
+
+.movie-card-carousel .movie-card-modern {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.movie-card-modern {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .movie-card-modern:hover {
@@ -503,16 +875,16 @@
   box-shadow: 0 4px 16px rgba(229, 9, 20, 0.5) !important;
 }
 
-/* Always visible add button badge */
+/* Always visible add button badge - Rotten Tomatoes style */
 .add-button-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -521,8 +893,8 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 15;
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .add-button-badge:hover {
@@ -565,18 +937,17 @@
 }
 
 .movie-info-modern {
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.4);
-  /* Premium compact info section */
-  backdrop-filter: blur(5px);
+  padding: 12px 0 0 0;
+  background: transparent;
+  /* Rotten Tomatoes style - no background, clean spacing */
 }
 
 .movie-info-modern h3,
 .movie-info-modern h4 {
-  color: #fff !important;
-  font-size: 0.9rem !important;
-  font-weight: 600 !important;
-  margin: 0 0 6px 0 !important;
+  color: #ffffff !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  margin: 0 0 8px 0 !important;
   line-height: 1.3 !important;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -584,6 +955,8 @@
   overflow: hidden;
   cursor: pointer;
   transition: color 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .movie-info-modern h3:hover,
@@ -592,9 +965,12 @@
 }
 
 .movie-info-modern p {
-  color: rgba(255, 255, 255, 0.6) !important;
-  font-size: 0.75rem !important;
-  margin: 0 !important;
+  color: #e0e0e0 !important;
+  font-size: 0.95rem !important;
+  margin: 4px 0 0 0 !important;
+  line-height: 1.4 !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* ============================================
@@ -688,9 +1064,9 @@
   }
   
   .movies-grid {
-    /* On smaller screens, show even more movies */
-    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)) !important;
-    gap: 6px !important;
+    /* On smaller screens, adjust card size */
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    gap: 16px !important;
   }
   
   .compact-grid {

@@ -22,7 +22,9 @@ class MongoDBClient:
     
     def connect(self):
         """Connect to MongoDB Atlas"""
-        if self._client is None:
+        # Reset client if previous connection failed
+        if self._client is None or not self._connection_attempted:
+            self._connection_attempted = True
             import ssl
             import certifi
             
@@ -40,9 +42,28 @@ class MongoDBClient:
                 )
                 return False
             
+            # URL encode special characters in password if needed
+            # Check if URI contains unencoded special characters
+            from urllib.parse import quote_plus, unquote, urlparse, parse_qs
+            try:
+                parsed = urlparse(mongodb_uri)
+                # If password contains special chars and isn't encoded, we need to handle it
+                # But for now, try the URI as-is first, then try with proper encoding if it fails
+            except:
+                pass
+            
             # Try multiple connection methods (ordered by likelihood of success)
+            # First, try the simplest connection method (most compatible with Atlas)
             connection_methods = [
-                # Method 1: Simple connection without ServerApi (most compatible)
+                # Method 1: Simplest - let URI handle everything (most compatible)
+                {
+                    'name': 'simplest (URI only)',
+                    'kwargs': {
+                        'serverSelectionTimeoutMS': 10000,
+                        'connectTimeoutMS': 10000,
+                    }
+                },
+                # Method 2: Simple connection without ServerApi (most compatible)
                 {
                     'name': 'simple connection (no ServerApi)',
                     'kwargs': {
@@ -135,7 +156,12 @@ class MongoDBClient:
                     self._client = None
                     continue
                 except Exception as e:
-                    logger.warning(f"Method '{method['name']}' error: {str(e)[:200]}")
+                    error_msg = str(e)
+                    # Don't log full error for auth failures (security)
+                    if 'authentication failed' in error_msg.lower() or 'bad auth' in error_msg.lower():
+                        logger.warning(f"Method '{method['name']}' failed: authentication error")
+                    else:
+                        logger.warning(f"Method '{method['name']}' error: {error_msg[:200]}")
                     if self._client:
                         try:
                             self._client.close()

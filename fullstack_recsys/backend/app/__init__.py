@@ -60,14 +60,9 @@ db = SQLAlchemy()
 db.init_app(app)
 
 # MongoDB connection (lazy initialization to avoid build-time errors)
-try:
-    mongodb_client.connect()
-    mongodb = mongodb_client.get_database()
-except Exception as e:
-    # Allow app to start even if MongoDB connection fails during import
-    # Connection will be retried when actually needed
-    mongodb = None
-    logger.warning(f"MongoDB connection deferred: {e}")
+# Don't connect here - let it connect when actually needed
+mongodb = None
+logger.info("MongoDB connection will be initialized on first use")
 
 flask_bcrypt = Bcrypt()
 flask_bcrypt.init_app(app)

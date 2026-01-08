@@ -25,7 +25,9 @@ class App extends React.Component {
       selectedMovieDetails: null,
       loadingMovies: true,
       loadingRecommendations: false,
-      loadingMovieDetails: false
+      loadingMovieDetails: false,
+      trendingMovies: [],
+      currentTrendingIndex: 0
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.onRefreshClick = this.onRefreshClick.bind(this)
@@ -39,18 +41,42 @@ class App extends React.Component {
     this.onMovieClick = this.onMovieClick.bind(this)
     this.closeModal = this.closeModal.bind(this)
     this.toastRef = React.createRef();
-
-    this.loadMovieDB();
+    this.trendingInterval = null;
+    this._isMounted = false;
   }
 
   componentDidMount() {
+    this._isMounted = true;
+    // Load movies after component is mounted
+    this.loadMovieDB();
     // Add keyboard shortcuts
     document.addEventListener('keydown', this.handleKeyDown);
+    // Start auto-sliding trending movies
+    this.startTrendingAutoSlide();
   }
 
   componentWillUnmount() {
+    this._isMounted = false;
     // Clean up keyboard listeners
     document.removeEventListener('keydown', this.handleKeyDown);
+    // Clear trending auto-slide interval
+    if (this.trendingInterval) {
+      clearInterval(this.trendingInterval);
+      this.trendingInterval = null;
+    }
+  }
+
+  startTrendingAutoSlide = () => {
+    // Auto-slide every 5 seconds
+    this.trendingInterval = setInterval(() => {
+      this.setState(prevState => {
+        const trendingCount = prevState.trendingMovies.length;
+        if (trendingCount === 0) return prevState;
+        return {
+          currentTrendingIndex: (prevState.currentTrendingIndex + 1) % trendingCount
+        };
+      });
+    }, 5000);
   }
 
   handleKeyDown = (e) => {
@@ -63,6 +89,55 @@ class App extends React.Component {
       const searchValue = e.target.value;
       this.onSearchClick(this.state.searchKey, searchValue);
     }
+  }
+
+  loadTrendingMovies = (allMovies) => {
+    const trendingUrl = `${config.API_URL}/api/trending`;
+    
+    fetch(trendingUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const trendingMovies = data.result || [];
+        if (trendingMovies.length > 0) {
+          console.log(`[loadTrendingMovies] Loaded ${trendingMovies.length} trending movies from API`);
+          if (this._isMounted) {
+            this.setState({ trendingMovies: trendingMovies });
+          }
+        } else {
+          // Fallback to date-based sorting
+          this.setTrendingFromMovies(allMovies);
+        }
+      })
+      .catch(error => {
+        console.warn('[loadTrendingMovies] Error loading trending movies, using date-based fallback:', error);
+        // Fallback to date-based sorting
+        this.setTrendingFromMovies(allMovies);
+      });
+  }
+
+  setTrendingFromMovies = (movies) => {
+    const trendingMovies = movies
+      .filter(m => m && m.poster && m.poster !== 'null' && m.poster !== 'None' && !m.poster.includes('via.placeholder.com'))
+      .sort((a, b) => {
+        // Sort by date (most recent first)
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA; // Descending order (newest first)
+      })
+      .slice(0, 10); // Top 10 most recent movies with posters
+    
+    console.log(`[setTrendingFromMovies] Fallback trending movies selected: ${trendingMovies.length}`);
+    this.setState({ trendingMovies: trendingMovies });
   }
 
   loadMovieDB(){
@@ -118,6 +193,9 @@ class App extends React.Component {
           }
         }
         
+        // Load trending movies (will use API if available, otherwise date-based fallback)
+        this.loadTrendingMovies(movies);
+        
         this.setState((prevState) => ({
           fullMovies: movies,
           candidates: movies,
@@ -136,7 +214,9 @@ class App extends React.Component {
           stack: error.stack,
           name: error.name
         });
-        this.setState({ loadingMovies: false });
+        if (this._isMounted) {
+          this.setState({ loadingMovies: false });
+        }
         if (this.toastRef.current) {
           const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
             ? `Cannot connect to backend at ${config.API_URL}. Please ensure the backend server is running on port 5555.`
@@ -522,6 +602,7 @@ class App extends React.Component {
               ]}
               value={this.state.searchKey}
               onChange={(e, data) => this.onSelectChange(e, data)}
+              ref={(ref) => this.searchDropdownRef = ref}
             />
             <Button 
               className="search-button"
@@ -546,26 +627,133 @@ class App extends React.Component {
           </div>
         </div>
 
-        {/* Main Content - 3-Column Side-by-Side Layout */}
+        {/* Main Content - Rotten Tomatoes Style Layout */}
         <Container className="main-container" style={{ padding: '40px 20px', maxWidth: '1800px' }}>
           {this.state.loadingMovies ? (
             <Dimmer active inverted>
               <Loader size="large">Loading Movies...</Loader>
             </Dimmer>
           ) : (
-            <div className="three-column-layout">
-              {/* Column 1: Available Movies */}
-              <div className="column available-column">
-                <div className="movies-section available-section">
-                  <div className="section-header-modern">
-                    <Icon name="film" size="large" />
-                    <div>
-                      <h2>Available Movies</h2>
-                      <p className="section-subtitle">{this.state.candidatesShow.length} movies available</p>
-                    </div>
+            <div className="rottentomatoes-layout">
+              {/* Hero Section: Trending Now - Auto-Sliding Carousel */}
+              {this.state.trendingMovies.length > 0 && (
+              <div className="trending-hero-section">
+                <div className="trending-header">
+                  <div>
+                    <h1 className="trending-title">
+                      <Icon name="fire" color="red" />
+                      Trending Now
+                    </h1>
+                    <p className="trending-subtitle">Discover what's hot right now</p>
                   </div>
-                  {this.state.candidatesShow.length > 0 ? (
-                    <div className="movies-grid scrollable-grid">
+                  <div className="trending-indicators">
+                    {this.state.trendingMovies.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`trending-dot ${index === this.state.currentTrendingIndex ? 'active' : ''}`}
+                        onClick={() => this.setState({ currentTrendingIndex: index })}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="trending-carousel-container">
+                  <div 
+                    className="trending-carousel"
+                    style={{
+                      transform: `translateX(-${this.state.currentTrendingIndex * 100}%)`
+                    }}
+                  >
+                    {this.state.trendingMovies.map((movie, index) => {
+                      const hasValidPoster = movie.poster && 
+                        typeof movie.poster === 'string' &&
+                        movie.poster.trim().length > 0 &&
+                        movie.poster !== 'null' &&
+                        movie.poster !== 'None' &&
+                        !movie.poster.includes('via.placeholder.com');
+                      
+                      return (
+                        <div key={movie.id || index} className="trending-slide">
+                          <div className="trending-poster" onClick={() => this.onMovieClick(movie)}>
+                            {hasValidPoster ? (
+                              <img 
+                                src={movie.poster} 
+                                alt={movie.title || 'Movie poster'}
+                                loading="eager"
+                                onError={(e) => {
+                                  try {
+                                    const img = e.target;
+                                    img.style.display = 'none';
+                                    img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
+                                    let placeholder = img.nextElementSibling;
+                                    if (!placeholder || !placeholder.classList?.contains('trending-placeholder')) {
+                                      placeholder = img.parentElement?.querySelector('.trending-placeholder');
+                                    }
+                                    if (placeholder) {
+                                      placeholder.style.display = 'flex';
+                                    }
+                                  } catch (error) {
+                                    console.error('Error handling image load failure:', error);
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className="trending-placeholder" 
+                              style={{ display: hasValidPoster ? 'none' : 'flex' }}
+                            >
+                              <Icon name="film" size="massive" />
+                            </div>
+                            <div className="trending-overlay">
+                              <div className="trending-content">
+                                <h2 className="trending-movie-title">{movie.title || 'Unknown Title'}</h2>
+                                <p className="trending-movie-info">{movie.genre || 'Unknown'} • {movie.date || 'Unknown'}</p>
+                                <div className="trending-actions">
+                                  <Button 
+                                    icon 
+                                    labelPosition='left' 
+                                    className="trending-add-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      this.onCandidateClick(movie);
+                                    }}
+                                  >
+                                    <Icon name="plus" />
+                                    Add to List
+                                  </Button>
+                                  <Button 
+                                    icon 
+                                    labelPosition='left' 
+                                    className="trending-info-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      this.onMovieClick(movie);
+                                    }}
+                                  >
+                                    <Icon name="info circle" />
+                                    Details
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Section 1: Available Movies - Rotten Tomatoes Style */}
+              <div className="rt-section">
+                <div className="rt-section-header">
+                  <div>
+                    <h2 className="rt-section-title">Available Movies</h2>
+                    <p className="rt-section-subtitle">{this.state.candidatesShow.length} movies available</p>
+                  </div>
+                </div>
+                {this.state.candidatesShow.length > 0 ? (
+                  <div className="movies-carousel">
                       {this.state.candidatesShow
                         .filter(movie => movie && movie.id !== undefined && movie.id !== null && movie.title)
                         .map(movie => {
@@ -580,21 +768,118 @@ class App extends React.Component {
                             !movie.poster.includes('via.placeholder.com');
                           
                           return (
-                            <div key={`movie-${movie.id}`} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
+                            <div key={`movie-${movie.id}`} className={`movie-card-carousel ${isSelected ? 'selected' : ''}`}>
+                              <div className="movie-card-modern">
+                                <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                                  {hasValidPoster ? (
+                                    <img 
+                                      src={movie.poster} 
+                                      alt={movie.title || 'Movie poster'}
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        // Hide broken image and show placeholder instead
+                                        try {
+                                          const img = e.target;
+                                          img.style.display = 'none';
+                                          // Prevent further retry attempts
+                                          img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
+                                          // Find placeholder - try nextElementSibling first, then parent querySelector
+                                          let placeholder = img.nextElementSibling;
+                                          if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
+                                            placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
+                                          }
+                                          if (placeholder) {
+                                            placeholder.style.display = 'flex';
+                                          }
+                                        } catch (error) {
+                                          console.error('Error handling image load failure:', error);
+                                        }
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div 
+                                    className="poster-placeholder-modern" 
+                                    style={{ display: hasValidPoster ? 'none' : 'flex' }}
+                                  >
+                                    <Icon name="film" size="big" />
+                                  </div>
+                                  {/* Always visible add button in top-right */}
+                                  <div 
+                                    className="add-button-badge"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      this.onCandidateClick(movie);
+                                    }}
+                                    title={isSelected ? "Remove from selection" : "Add to selection"}
+                                  >
+                                    <Icon name={isSelected ? "check circle" : "plus circle"} size="large" />
+                                  </div>
+                                  {/* Overlay with button on hover */}
+                                  <div className="movie-overlay">
+                                    <Button 
+                                      icon 
+                                      circular 
+                                      size="large"
+                                      className={isSelected ? "remove-btn" : "add-btn"}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        this.onCandidateClick(movie);
+                                      }}
+                                      title={isSelected ? "Remove from selection" : "Add to selection"}
+                                    >
+                                      <Icon name={isSelected ? "check" : "plus"} />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="movie-info-modern">
+                                  <h3 onClick={() => this.onMovieClick(movie)}>{movie.title || 'Unknown Title'}</h3>
+                                  <p>{movie.genre || 'Unknown'} • {movie.date || 'Unknown'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                  </div>
+                ) : (
+                  <Message info className="empty-message-modern">
+                    <Message.Header>No movies found</Message.Header>
+                    <p>Try adjusting your search criteria or click the logo to refresh.</p>
+                  </Message>
+                )}
+              </div>
+
+              {/* Section 2: Selected Movies - Rotten Tomatoes Style */}
+              {this.state.selected.length > 0 && (
+              <div className="rt-section">
+                <div className="rt-section-header">
+                  <div>
+                    <h2 className="rt-section-title">Your Selected Movies</h2>
+                    <p className="rt-section-subtitle">{this.state.selected.length} movie{this.state.selected.length !== 1 ? 's' : ''} selected</p>
+                  </div>
+                </div>
+                <div className="movies-carousel">
+                      {this.state.selected.map(movie => {
+                        const hasValidPoster = movie.poster && 
+                          typeof movie.poster === 'string' &&
+                          movie.poster.trim().length > 0 &&
+                          movie.poster !== 'null' &&
+                          movie.poster !== 'None' &&
+                          !movie.poster.includes('via.placeholder.com');
+                        
+                        return (
+                          <div key={movie.id} className="movie-card-carousel">
+                            <div className="movie-card-modern">
                               <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
                                 {hasValidPoster ? (
                                   <img 
                                     src={movie.poster} 
-                                    alt={movie.title || 'Movie poster'}
+                                    alt={movie.title}
                                     loading="lazy"
                                     onError={(e) => {
-                                      // Hide broken image and show placeholder instead
                                       try {
                                         const img = e.target;
                                         img.style.display = 'none';
-                                        // Prevent further retry attempts
                                         img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
-                                        // Find placeholder - try nextElementSibling first, then parent querySelector
                                         let placeholder = img.nextElementSibling;
                                         if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
                                           placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
@@ -612,173 +897,63 @@ class App extends React.Component {
                                   className="poster-placeholder-modern" 
                                   style={{ display: hasValidPoster ? 'none' : 'flex' }}
                                 >
-                                  <Icon name="film" size="big" />
+                                  <Icon name="film" />
                                 </div>
-                                {/* Always visible add button in top-right */}
-                                <div 
-                                  className="add-button-badge"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    this.onCandidateClick(movie);
-                                  }}
-                                  title={isSelected ? "Remove from selection" : "Add to selection"}
-                                >
-                                  <Icon name={isSelected ? "check circle" : "plus circle"} size="large" />
-                                </div>
-                                {/* Overlay with button on hover */}
                                 <div className="movie-overlay">
                                   <Button 
                                     icon 
                                     circular 
-                                    size="large"
-                                    className={isSelected ? "remove-btn" : "add-btn"}
+                                    size="small"
+                                    className="remove-btn"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      this.onCandidateClick(movie);
+                                      this.onSelectedClick(movie);
                                     }}
-                                    title={isSelected ? "Remove from selection" : "Add to selection"}
                                   >
-                                    <Icon name={isSelected ? "check" : "plus"} />
+                                    <Icon name="times" />
                                   </Button>
                                 </div>
                               </div>
                               <div className="movie-info-modern">
-                                <h3 onClick={() => this.onMovieClick(movie)}>{movie.title || 'Unknown Title'}</h3>
-                                <p>{movie.genre || 'Unknown'} • {movie.date || 'Unknown'}</p>
+                                <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
+                                <p>{movie.genre}</p>
                               </div>
                             </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No movies found</Message.Header>
-                      <p>Try adjusting your search criteria or click the logo to refresh.</p>
-                    </Message>
-                  )}
-                </div>
-              </div>
-
-              {/* Column 2: Selected Movies */}
-              <div className="column selected-column">
-                <div className="movies-section selected-section">
-                  <div className="section-header-modern">
-                    <Icon name="heart" color="red" size="large" />
-                    <div>
-                      <h2>Selected Movies</h2>
-                      <p className="section-subtitle">{this.state.selected.length} selected</p>
-                    </div>
-                  </div>
-                  {this.state.selected.length > 0 ? (
-                    <div className="movies-grid compact-grid scrollable-grid">
-                      {this.state.selected.map(movie => {
-                        const hasValidPoster = movie.poster && 
-                          typeof movie.poster === 'string' &&
-                          movie.poster.trim().length > 0 &&
-                          movie.poster !== 'null' &&
-                          movie.poster !== 'None' &&
-                          !movie.poster.includes('via.placeholder.com');
-                        
-                        return (
-                          <div key={movie.id} className="movie-card-modern compact">
-                            <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
-                              {hasValidPoster ? (
-                                <img 
-                                  src={movie.poster} 
-                                  alt={movie.title}
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    try {
-                                      const img = e.target;
-                                      img.style.display = 'none';
-                                      // Prevent further retry attempts
-                                      img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
-                                      // Find placeholder - try nextElementSibling first, then parent querySelector
-                                      let placeholder = img.nextElementSibling;
-                                      if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
-                                        placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
-                                      }
-                                      if (placeholder) {
-                                        placeholder.style.display = 'flex';
-                                      }
-                                    } catch (error) {
-                                      console.error('Error handling image load failure:', error);
-                                    }
-                                  }}
-                                />
-                              ) : null}
-                              <div 
-                                className="poster-placeholder-modern" 
-                                style={{ display: hasValidPoster ? 'none' : 'flex' }}
-                              >
-                                <Icon name="film" />
-                              </div>
-                            <div className="movie-overlay">
-                              <Button 
-                                icon 
-                                circular 
-                                size="small"
-                                className="remove-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  this.onSelectedClick(movie);
-                                }}
-                              >
-                                <Icon name="times" />
-                              </Button>
-                            </div>
                           </div>
-                            <div className="movie-info-modern">
-                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
-                            <p>{movie.genre}</p>
-                          </div>
-                        </div>
                         );
                       })}
-                    </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No Movies Selected</Message.Header>
-                      <p>Click the <Icon name="plus" /> button on movies to add them here.</p>
-                    </Message>
-                  )}
                 </div>
               </div>
+              )}
 
-              {/* Column 3: Recommendations */}
-              <div className="column recommendations-column">
-                <div className="movies-section recommendations-section">
-                  <div className="section-header-modern">
-                    <Icon name="fire" color={this.state.recommended.length > 0 ? "red" : "grey"} size="large" />
-                    <div>
-                      <h2>Recommendations</h2>
-                      <p className="section-subtitle">
-                        {this.state.loadingRecommendations 
-                          ? 'Loading...' 
-                          : this.state.recommended.length > 0 
-                            ? `${this.state.recommended.length} found using ${this.state.modelKey}`
-                            : this.state.selected.length > 0
-                              ? 'Click RECOMMEND to get suggestions'
-                              : 'Select movies first'}
-                      </p>
-                    </div>
+              {/* Section 3: Recommendations - Rotten Tomatoes Style */}
+              {this.state.recommended.length > 0 && (
+              <div className="rt-section">
+                <div className="rt-section-header">
+                  <div>
+                    <h2 className="rt-section-title">Recommendations</h2>
+                    <p className="rt-section-subtitle">
+                      {this.state.recommended.length} recommendation{this.state.recommended.length !== 1 ? 's' : ''} using {this.state.modelKey}
+                    </p>
                   </div>
-                  {this.state.loadingRecommendations ? (
-                    <Dimmer active inverted>
-                      <Loader size="large">Loading Recommendations...</Loader>
-                    </Dimmer>
-                  ) : this.state.recommended.length > 0 ? (
-                    <div className="movies-grid compact-grid scrollable-grid">
-                      {this.state.recommended.map(movie => {
-                        const hasValidPoster = movie.poster && 
-                          typeof movie.poster === 'string' &&
-                          movie.poster.trim().length > 0 &&
-                          movie.poster !== 'null' &&
-                          movie.poster !== 'None' &&
-                          !movie.poster.includes('via.placeholder.com');
-                        
-                        return (
-                          <div key={movie.id} className="movie-card-modern compact recommended">
+                </div>
+                {this.state.loadingRecommendations ? (
+                  <Dimmer active inverted>
+                    <Loader size="large">Loading Recommendations...</Loader>
+                  </Dimmer>
+                ) : (
+                  <div className="movies-carousel">
+                    {this.state.recommended.map(movie => {
+                      const hasValidPoster = movie.poster && 
+                        typeof movie.poster === 'string' &&
+                        movie.poster.trim().length > 0 &&
+                        movie.poster !== 'null' &&
+                        movie.poster !== 'None' &&
+                        !movie.poster.includes('via.placeholder.com');
+                      
+                      return (
+                        <div key={movie.id} className="movie-card-carousel recommended">
+                          <div className="movie-card-modern">
                             <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
                               {hasValidPoster ? (
                                 <img 
@@ -789,9 +964,7 @@ class App extends React.Component {
                                     try {
                                       const img = e.target;
                                       img.style.display = 'none';
-                                      // Prevent further retry attempts
                                       img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"%3E%3C/svg%3E';
-                                      // Find placeholder - try nextElementSibling first, then parent querySelector
                                       let placeholder = img.nextElementSibling;
                                       if (!placeholder || !placeholder.classList?.contains('poster-placeholder-modern')) {
                                         placeholder = img.parentElement?.querySelector('.poster-placeholder-modern');
@@ -820,17 +993,14 @@ class App extends React.Component {
                               <p>{movie.genre} • {movie.date}</p>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No Recommendations Yet</Message.Header>
-                      <p>Select movies and click RECOMMEND to get personalized recommendations!</p>
-                    </Message>
-                  )}
-                </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+              )}
+
             </div>
           )}
         </Container>
