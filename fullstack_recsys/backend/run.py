@@ -491,6 +491,43 @@ def search_movies():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
+@app.route('/health', methods=['GET'])
+def health():
+	"""Health check endpoint"""
+	try:
+		# Check database connectivity
+		is_mongo = use_mongodb()
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				# Test MongoDB connection
+				mongodb.client.admin.command('ping')
+				db_status = 'connected'
+			else:
+				db_status = 'disconnected'
+		else:
+			# SQLite - just check if db exists
+			try:
+				db.session.execute(db.text('SELECT 1'))
+				db_status = 'connected'
+			except:
+				db_status = 'disconnected'
+		
+		return jsonify({
+			'status': 'healthy',
+			'database': 'MongoDB' if is_mongo else 'SQLite',
+			'db_status': db_status,
+			'timestamp': datetime.utcnow().isoformat()
+		}), 200
+	except Exception as e:
+		logger.error(f"Health check error: {str(e)}")
+		return jsonify({
+			'status': 'unhealthy',
+			'error': str(e),
+			'timestamp': datetime.utcnow().isoformat()
+		}), 503
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
 	"""Get database statistics"""
@@ -594,7 +631,7 @@ def register():
 		if is_mongo:
 			from mongodb_client import mongodb_client
 			mongodb = mongodb_client.get_database()
-			if mongodb:
+			if mongodb is not None:
 				users_collection = mongodb['users']
 				existing_user = users_collection.find_one({'$or': [{'username': username}, {'email': email}]})
 				if existing_user:
@@ -690,7 +727,7 @@ def login():
 		if is_mongo:
 			from mongodb_client import mongodb_client
 			mongodb = mongodb_client.get_database()
-			if mongodb:
+			if mongodb is not None:
 				users_collection = mongodb['users']
 				user_doc = users_collection.find_one({'username': username})
 				if user_doc and flask_bcrypt.check_password_hash(user_doc.get('password_hash', ''), password):
@@ -763,13 +800,17 @@ def get_current_user():
 		if is_mongo:
 			from mongodb_client import mongodb_client
 			mongodb = mongodb_client.get_database()
-			if mongodb:
+			if mongodb is not None:
 				users_collection = mongodb['users']
 				try:
-					user_id_int = int(user_id) if user_id.isdigit() else user_id
-					user_doc = users_collection.find_one({'_id': user_id_int})
+					from bson.objectid import ObjectId
+					user_doc = users_collection.find_one({'_id': ObjectId(user_id)})
 				except:
-					user_doc = users_collection.find_one({'_id': user_id})
+					try:
+						user_id_int = int(user_id) if user_id.isdigit() else user_id
+						user_doc = users_collection.find_one({'_id': user_id_int})
+					except:
+						user_doc = users_collection.find_one({'_id': user_id})
 				if user_doc:
 					user = {
 						'id': str(user_doc['_id']),
