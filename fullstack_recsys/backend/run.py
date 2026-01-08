@@ -41,8 +41,28 @@ def recommend():
 		if 'context' not in data or not data['context']:
 			return jsonify({'message': 'Context (movie IDs) is required', 'error': 'MISSING_CONTEXT'}), 400
 		
+		if not isinstance(data['context'], list) or len(data['context']) == 0:
+			return jsonify({'message': 'Context must be a non-empty array of movie IDs', 'error': 'INVALID_CONTEXT'}), 400
+		
+		# Validate context contains only integers
+		try:
+			context_ids = [int(id) for id in data['context']]
+			if len(context_ids) == 0:
+				return jsonify({'message': 'Context must contain at least one valid movie ID', 'error': 'EMPTY_CONTEXT'}), 400
+		except (ValueError, TypeError):
+			return jsonify({'message': 'Context must contain only numeric movie IDs', 'error': 'INVALID_CONTEXT_FORMAT'}), 400
+		
 		if 'model' not in data:
 			return jsonify({'message': 'Model name is required', 'error': 'MISSING_MODEL'}), 400
+		
+		# Validate model name
+		valid_models = ['EASE', 'ItemKNN', 'NeuralMF', 'DeepFM']
+		if data['model'] not in valid_models:
+			return jsonify({
+				'message': f'Invalid model. Must be one of: {", ".join(valid_models)}',
+				'error': 'INVALID_MODEL',
+				'available_models': valid_models
+			}), 400
 		
 		# Call recommendation API
 		# Render free tier services sleep after inactivity, so we need longer timeout and retry
@@ -320,14 +340,27 @@ def get_movie(movie_id):
 @app.route('/api/movies/<movie_id>/details', methods=['GET', 'OPTIONS'])
 def get_movie_details(movie_id):
 	"""Get enhanced movie details with cast, crew, and additional info from TMDB"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
-		# Handle OPTIONS preflight request
-		if request.method == 'OPTIONS':
-			return '', 200
+		# Validate movie_id
+		if not movie_id:
+			return jsonify({
+				'message': 'Movie ID is required',
+				'error': 'MISSING_ID'
+			}), 400
 		
 		# Try to convert to int if it's a numeric string, otherwise use as-is
+		movie = None
 		try:
 			movie_id_int = int(movie_id)
+			if movie_id_int < 0:
+				return jsonify({
+					'message': 'Movie ID must be a positive number',
+					'error': 'INVALID_ID'
+				}), 400
 			movie = get_movie_by_id(movie_id_int)
 		except ValueError:
 			# If movie_id is not numeric (e.g., "tmdb_1242898"), try to extract numeric part
@@ -339,7 +372,10 @@ def get_movie_details(movie_id):
 				logger.info(f"Extracted numeric ID {movie_id_int} from {movie_id}")
 			else:
 				logger.warning(f"Non-numeric movie_id received and no numeric part found: {movie_id}")
-				movie = None
+				return jsonify({
+					'message': f'Invalid movie ID format: {movie_id}',
+					'error': 'INVALID_ID_FORMAT'
+				}), 400
 		
 		if not movie:
 			return jsonify({

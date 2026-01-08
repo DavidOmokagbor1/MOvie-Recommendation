@@ -141,17 +141,28 @@ class App extends React.Component {
   }
 
   loadMovieDB(){
+    // Only load if not already loaded and component is mounted
+    if (!this._isMounted) {
+      console.warn('[loadMovieDB] Component not mounted, skipping load');
+      return;
+    }
+    
     this.setState({ loadingMovies: true });
     const apiUrl = `${config.API_URL}/init`;
     
     console.log(`[loadMovieDB] Attempting to load movies from: ${apiUrl}`);
     console.log(`[loadMovieDB] API_URL config:`, config.API_URL);
     
+    // Add timeout to fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: controller.signal
     })
       .then(response => {
         console.log(`[loadMovieDB] Response status: ${response.status}`);
@@ -338,41 +349,83 @@ class App extends React.Component {
   }
 
   fetchMovieDetails = async (movieId) => {
+    // Validate movieId
+    if (!movieId || (typeof movieId !== 'number' && typeof movieId !== 'string')) {
+      console.warn('[fetchMovieDetails] Invalid movieId:', movieId);
+      this.setState({ loadingMovieDetails: false });
+      return;
+    }
+    
+    // Only update state if component is still mounted
+    if (!this._isMounted) {
+      console.warn('[fetchMovieDetails] Component not mounted, skipping');
+      return;
+    }
+    
     this.setState({ loadingMovieDetails: true });
+    
     try {
       const apiUrl = `${config.API_URL}/api/movies/${movieId}/details`;
       if (process.env.NODE_ENV === 'development') {
       console.log(`Fetching movie details from: ${apiUrl}`);
       }
+      
+      // Add timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      
+      if (!this._isMounted) {
+        console.warn('[fetchMovieDetails] Component unmounted during fetch');
+        return;
+      }
+      
       if (response.ok) {
         const data = await response.json();
-        this.setState({
-          selectedMovieDetails: data.result,
-          loadingMovieDetails: false
-        });
+        if (this._isMounted) {
+          this.setState({
+            selectedMovieDetails: data.result || null,
+            loadingMovieDetails: false
+          });
+        }
       } else {
-        // If enhanced details fail, just use basic movie info
+        // If enhanced details fail, just use basic movie info (graceful degradation)
         console.warn(`Failed to fetch movie details: HTTP ${response.status}`);
-        this.setState({
-          loadingMovieDetails: false
-        });
+        if (this._isMounted) {
+          this.setState({
+            loadingMovieDetails: false
+            // Keep selectedMovieDetails as null, will use basic movie info
+          });
+        }
       }
     } catch (error) {
+      // Only update state if component is still mounted
+      if (!this._isMounted) {
+        console.warn('[fetchMovieDetails] Component unmounted, skipping error handling');
+        return;
+      }
+      
       console.error('Error fetching movie details:', error);
       this.setState({
         loadingMovieDetails: false
+        // Graceful degradation: will use basic movie info from selectedMovie
       });
-      if (this.toastRef.current) {
+      
+      // Only show error for critical failures, not for missing enhanced details
+      if (error.name !== 'AbortError' && this.toastRef.current) {
         const errorMessage = error.message?.includes('Failed to fetch') || error.message?.includes('ERR_CONNECTION_REFUSED')
-          ? `Cannot connect to backend at ${config.API_URL}. Please ensure the backend server is running.`
-          : `Failed to load movie details: ${error.message || 'Unknown error'}`;
-        this.toastRef.current.show(errorMessage, 'error');
+          ? `Cannot connect to backend. Enhanced details unavailable.`
+          : `Enhanced movie details unavailable.`;
+        this.toastRef.current.show(errorMessage, 'warning'); // Use warning, not error, since basic info still works
       }
     }
   }
@@ -425,21 +478,66 @@ class App extends React.Component {
     console.log(`Request body:`, JSON.stringify({ context: context_ids, model: selectedModel }));
     }
     
-    // Use async fetch - non-blocking
-    fetch(recommendUrl, requestOptions)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    // Use async fetch with retry logic for better reliability
+    const fetchWithRetry = async (url, options, retries = 2) => {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (!response.ok) {
+            // Don't retry on client errors (4xx), only server errors (5xx) and network errors
+            if (response.status >= 400 && response.status < 500 && i < retries) {
+              // Wait before retry for client errors
+              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+              continue;
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response;
+        } catch (error) {
+          if (i === retries) throw error;
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         }
-        return response.json();
-      })
+      }
+    };
+    
+    fetchWithRetry(recommendUrl, requestOptions)
+      .then(response => response.json())
       .then(data => {
+        // Only update state if component is still mounted
+        if (!this._isMounted) {
+          console.warn('[onRecommendClick] Component unmounted, skipping state update');
+          return;
+        }
+        
         if (process.env.NODE_ENV === 'development') {
         console.log('=== Recommendation API Response ===');
         console.log('Full response:', data);
         }
         if (process.env.NODE_ENV === 'development') {
         console.log('Response keys:', Object.keys(data));
+        }
+        
+        // Check for error in response
+        if (data.error) {
+          const errorMessages = {
+            'API_TIMEOUT': 'Recommendation service is taking too long. Please try again in a moment.',
+            'API_CONNECTION_ERROR': 'Cannot connect to recommendation service. The service may be starting up.',
+            'API_ERROR': 'Recommendation service is unavailable. Please try again later.',
+            'NO_RECOMMENDATIONS': 'No recommendations found for the selected movies. Try selecting different movies.',
+            'MOVIES_NOT_FOUND': 'Recommended movies not found in database.',
+            'INVALID_RESPONSE': 'Invalid response from recommendation service.',
+            'INTERNAL_ERROR': 'An internal error occurred. Please try again.'
+          };
+          
+          const userMessage = errorMessages[data.error] || data.message || 'An error occurred while getting recommendations.';
+          
+          if (this.toastRef.current) {
+            this.toastRef.current.show(userMessage, 'error');
+          }
+          
+          this.setState({ loadingRecommendations: false });
+          return;
         }
         
         // Handle different response formats
@@ -460,21 +558,29 @@ class App extends React.Component {
           }
         }
         
-        // Ensure recommendations have required fields
-        const validRecommendations = recommendations.filter(rec => rec && rec.id);
+        // Ensure recommendations have required fields (id, title at minimum)
+        const validRecommendations = recommendations.filter(rec => 
+          rec && 
+          rec.id !== undefined && 
+          rec.id !== null && 
+          rec.title
+        );
+        
         if (process.env.NODE_ENV === 'development') {
           console.log(`Valid recommendations: ${validRecommendations.length} out of ${recommendations.length}`);
         }
         
         // Use requestAnimationFrame for smooth UI updates
         requestAnimationFrame(() => {
-          this.setState((prevState) => ({
-            fullMovies: prevState.fullMovies,
-            candidates: prevState.candidates,
-            selected: prevState.selected,
-            recommended: validRecommendations,
-            loadingRecommendations: false
-          }));
+          if (this._isMounted) {
+            this.setState((prevState) => ({
+              fullMovies: prevState.fullMovies,
+              candidates: prevState.candidates,
+              selected: prevState.selected,
+              recommended: validRecommendations,
+              loadingRecommendations: false
+            }));
+          }
         });
         
         if (this.toastRef.current) {
