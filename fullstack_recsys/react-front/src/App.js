@@ -219,6 +219,7 @@ class App extends React.Component {
         console.log(`[loadMovieDB] State updated. candidatesShow.length: ${movies.length}`);
       })
       .catch((error) => {
+        clearTimeout(timeoutId); // Clear timeout on error
         console.error('[loadMovieDB] Error loading movies:', error);
         console.error('[loadMovieDB] Error details:', {
           message: error.message,
