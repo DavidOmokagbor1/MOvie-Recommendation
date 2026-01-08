@@ -93,10 +93,29 @@ def recommend():
 				}), 503
 		
 		if 'result' not in res:
+			logger.error(f"ML API response missing 'result' field: {res}")
 			return jsonify({'message': 'Invalid response from recommendation API', 'error': 'INVALID_RESPONSE'}), 500
 		
+		if not res['result'] or len(res['result']) == 0:
+			logger.warning(f"ML API returned empty recommendations for context: {data.get('context')}")
+			return jsonify({
+				'message': 'No recommendations found for the selected movies',
+				'error': 'NO_RECOMMENDATIONS',
+				'result': []
+			}), 200
+		
 		# Get movie details from database using unified helper
+		logger.info(f"Looking up {len(res['result'])} recommended movie IDs: {res['result'][:10]}")
 		recommend_items = get_movies_by_ids(res['result'])
+		logger.info(f"Found {len(recommend_items)} movies in database for recommended IDs")
+		
+		if not recommend_items or len(recommend_items) == 0:
+			logger.error(f"Could not find any movies in database for recommended IDs: {res['result']}")
+			return jsonify({
+				'message': 'Recommended movies not found in database',
+				'error': 'MOVIES_NOT_FOUND',
+				'result': []
+			}), 200
 		
 		# Save recommendation interaction if user is authenticated
 		user_id = None
