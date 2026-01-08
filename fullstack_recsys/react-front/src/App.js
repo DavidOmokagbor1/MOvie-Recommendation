@@ -3,6 +3,7 @@ import React from 'react';
 import './App.css';
 import config from './config';
 import Toast from './components/Toast'
+import Login from './components/Login'
 import MovieDetailEnhanced from './components/MovieDetailEnhanced'
 import { Container, Icon, Button, Modal, Label, Loader, Dimmer, Dropdown, Message, Input } from "semantic-ui-react"
 import _ from "lodash";
@@ -27,7 +28,10 @@ class App extends React.Component {
       loadingRecommendations: false,
       loadingMovieDetails: false,
       trendingMovies: [],
-      currentTrendingIndex: 0
+      currentTrendingIndex: 0,
+      isAuthenticated: false,
+      user: null,
+      showLogin: false
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.onRefreshClick = this.onRefreshClick.bind(this)
@@ -40,6 +44,9 @@ class App extends React.Component {
     this.onModelSelectClick = this.onModelSelectClick.bind(this)
     this.onMovieClick = this.onMovieClick.bind(this)
     this.closeModal = this.closeModal.bind(this)
+    this.handleLogin = this.handleLogin.bind(this)
+    this.handleLogout = this.handleLogout.bind(this)
+    this.showLoginPage = this.showLoginPage.bind(this)
     this.toastRef = React.createRef();
     this.trendingInterval = null;
     this._isMounted = false;
@@ -47,8 +54,34 @@ class App extends React.Component {
 
   componentDidMount() {
     this._isMounted = true;
-    // Load movies after component is mounted
-    this.loadMovieDB();
+    
+    // Check if user is already logged in
+    const token = localStorage.getItem('authToken');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        this.setState({
+          isAuthenticated: true,
+          user: user,
+          showLogin: false
+        });
+      } catch (e) {
+        // Invalid user data, clear it
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
+    } else {
+      // Show login page if not authenticated
+      this.setState({ showLogin: true });
+    }
+    
+    // Load movies after component is mounted (only if authenticated)
+    if (this.state.isAuthenticated || !token) {
+      this.loadMovieDB();
+    }
+    
     // Add keyboard shortcuts
     document.addEventListener('keydown', this.handleKeyDown);
     // Start auto-sliding trending movies
@@ -439,6 +472,35 @@ class App extends React.Component {
       loadingMovieDetails: false
     })
   }
+
+  handleLogin = (user, token) => {
+    this.setState({
+      isAuthenticated: true,
+      user: user,
+      showLogin: false
+    });
+    // Load movies after login
+    this.loadMovieDB();
+  }
+
+  handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    this.setState({
+      isAuthenticated: false,
+      user: null,
+      showLogin: true,
+      selected: [],
+      recommended: []
+    });
+    if (this.toastRef.current) {
+      this.toastRef.current.show('Logged out successfully', 'info');
+    }
+  }
+
+  showLoginPage = () => {
+    this.setState({ showLogin: true });
+  }
   
   onRecommendClick(){
     if (this.state.selected.length < 1){
@@ -456,9 +518,16 @@ class App extends React.Component {
     // gather ids from selected list
     let context_ids = this.state.selected.map(movie => movie.id);
     // call recommend api
+    const headers = { 'Content-Type': 'application/json' };
+    // Add auth token if user is logged in
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const requestOptions = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify({ 
         context: context_ids,
         model: this.state.modelKey})
@@ -683,6 +752,18 @@ class App extends React.Component {
                 <Icon name='fire' />
                 RECOMMEND
               </Button>
+              {this.state.isAuthenticated && this.state.user && (
+                <div style={{ marginLeft: '15px', display: 'flex', alignItems: 'center', gap: '10px', borderLeft: '1px solid rgba(255,255,255,0.3)', paddingLeft: '15px' }}>
+                  <span style={{ color: '#fff', fontWeight: '500' }}>👤 {this.state.user.username}</span>
+                  <Button 
+                    size="small" 
+                    onClick={this.handleLogout}
+                    style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </header>

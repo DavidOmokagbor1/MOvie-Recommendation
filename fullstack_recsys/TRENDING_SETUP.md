@@ -99,3 +99,4 @@ curl http://localhost:5555/api/trending
 - TMDB API is free for non-commercial use
 - Rate limits apply (40 requests per 10 seconds)
 - The fallback (date-based) works perfectly fine if you prefer not to use TMDB
+

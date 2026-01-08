@@ -8,10 +8,11 @@ import requests
 
 from flask import render_template
 
-from app import app, db, migrate
+from app import app, db, migrate, flask_bcrypt
 from app.model import User, Movie, Interaction
 from db_helper import get_all_movies, get_movies_by_ids, get_movie_by_id, use_mongodb, save_interaction
 from tmdb_helper import get_enhanced_movie_details
+import jwt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -559,6 +560,254 @@ def get_stats():
 			'message': 'Failed to get statistics',
 			'error': 'INTERNAL_ERROR',
 			'details': str(e)
+		}), 500
+
+@app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+def register():
+	"""Register a new user"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		data = request.get_json()
+		
+		if not data:
+			return jsonify({'message': 'No data provided', 'error': 'MISSING_DATA'}), 400
+		
+		if 'username' not in data or not data['username']:
+			return jsonify({'message': 'Username is required', 'error': 'MISSING_USERNAME'}), 400
+		
+		if 'password' not in data or not data['password']:
+			return jsonify({'message': 'Password is required', 'error': 'MISSING_PASSWORD'}), 400
+		
+		if 'email' not in data or not data['email']:
+			return jsonify({'message': 'Email is required', 'error': 'MISSING_EMAIL'}), 400
+		
+		username = data['username'].strip()
+		password = data['password']
+		email = data['email'].strip()
+		age = data.get('age', -1)
+		gender = data.get('gender', '-')
+		
+		is_mongo = use_mongodb()
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb:
+				users_collection = mongodb['users']
+				existing_user = users_collection.find_one({'$or': [{'username': username}, {'email': email}]})
+				if existing_user:
+					return jsonify({
+						'message': 'Username or email already exists',
+						'error': 'USER_EXISTS'
+					}), 400
+				
+				user_doc = {
+					'username': username,
+					'email': email,
+					'password_hash': flask_bcrypt.generate_password_hash(password).decode('utf-8'),
+					'age': age if age > 0 else -1,
+					'gender': gender if gender else '-',
+					'created_at': datetime.utcnow(),
+					'is_active': True
+				}
+				result = users_collection.insert_one(user_doc)
+				user_id = result.inserted_id
+		else:
+			existing_user = User.query.filter(
+				(User.username == username) | (User.email == email)
+			).first()
+			if existing_user:
+				return jsonify({
+					'message': 'Username or email already exists',
+					'error': 'USER_EXISTS'
+				}), 400
+			
+			user = User(
+				username=username,
+				email=email,
+				age=age if age > 0 else -1,
+				gender=gender if gender else '-'
+			)
+			user.set_password(password)
+			db.session.add(user)
+			db.session.commit()
+			user_id = user.id
+		
+		token = jwt.encode(
+			{'user_id': str(user_id), 'username': username},
+			app.config['SECRET_KEY'],
+			algorithm='HS256'
+		)
+		
+		return jsonify({
+			'message': 'User registered successfully',
+			'token': token,
+			'user': {
+				'id': str(user_id),
+				'username': username,
+				'email': email,
+				'age': age,
+				'gender': gender
+			}
+		}), 201
+		
+	except Exception as e:
+		logger.error(f"Registration error: {str(e)}")
+		if db.session:
+			db.session.rollback()
+		return jsonify({
+			'message': 'Failed to register user',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
+@app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
+def login():
+	"""Login user and return JWT token"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		data = request.get_json()
+		
+		if not data:
+			return jsonify({'message': 'No data provided', 'error': 'MISSING_DATA'}), 400
+		
+		if 'username' not in data or not data['username']:
+			return jsonify({'message': 'Username is required', 'error': 'MISSING_USERNAME'}), 400
+		
+		if 'password' not in data or not data['password']:
+			return jsonify({'message': 'Password is required', 'error': 'MISSING_PASSWORD'}), 400
+		
+		username = data['username'].strip()
+		password = data['password']
+		
+		is_mongo = use_mongodb()
+		user = None
+		user_id = None
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb:
+				users_collection = mongodb['users']
+				user_doc = users_collection.find_one({'username': username})
+				if user_doc and flask_bcrypt.check_password_hash(user_doc.get('password_hash', ''), password):
+					user_id = str(user_doc['_id'])
+					user = {
+						'id': user_id,
+						'username': user_doc.get('username'),
+						'email': user_doc.get('email'),
+						'age': user_doc.get('age', -1),
+						'gender': user_doc.get('gender', '-')
+					}
+		else:
+			user_obj = User.query.filter_by(username=username).first()
+			if user_obj and user_obj.check_password(password):
+				user_id = user_obj.id
+				user = user_obj.to_dict()
+		
+		if not user:
+			return jsonify({
+				'message': 'Invalid username or password',
+				'error': 'INVALID_CREDENTIALS'
+			}), 401
+		
+		token = jwt.encode(
+			{'user_id': str(user_id), 'username': username},
+			app.config['SECRET_KEY'],
+			algorithm='HS256'
+		)
+		
+		return jsonify({
+			'message': 'Login successful',
+			'token': token,
+			'user': user
+		}), 200
+		
+	except Exception as e:
+		logger.error(f"Login error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to login',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
+@app.route('/api/auth/user', methods=['GET', 'OPTIONS'])
+def get_current_user():
+	"""Get current authenticated user"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		auth_header = request.headers.get('Authorization', '')
+		if not auth_header.startswith('Bearer '):
+			return jsonify({
+				'message': 'Authorization token required',
+				'error': 'MISSING_TOKEN'
+			}), 401
+		
+		token = auth_header.split(' ')[1]
+		token_data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+		user_id = token_data.get('user_id')
+		
+		if not user_id:
+			return jsonify({
+				'message': 'Invalid token',
+				'error': 'INVALID_TOKEN'
+			}), 401
+		
+		is_mongo = use_mongodb()
+		user = None
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb:
+				users_collection = mongodb['users']
+				try:
+					user_id_int = int(user_id) if user_id.isdigit() else user_id
+					user_doc = users_collection.find_one({'_id': user_id_int})
+				except:
+					user_doc = users_collection.find_one({'_id': user_id})
+				if user_doc:
+					user = {
+						'id': str(user_doc['_id']),
+						'username': user_doc.get('username'),
+						'email': user_doc.get('email'),
+						'age': user_doc.get('age', -1),
+						'gender': user_doc.get('gender', '-')
+					}
+		else:
+			user_obj = User.query.get(int(user_id))
+			if user_obj:
+				user = user_obj.to_dict()
+		
+		if not user:
+			return jsonify({
+				'message': 'User not found',
+				'error': 'USER_NOT_FOUND'
+			}), 404
+		
+		return jsonify({
+			'user': user
+		}), 200
+		
+	except jwt.ExpiredSignatureError:
+		return jsonify({
+			'message': 'Token has expired',
+			'error': 'TOKEN_EXPIRED'
+		}), 401
+	except jwt.InvalidTokenError:
+		return jsonify({
+			'message': 'Invalid token',
+			'error': 'INVALID_TOKEN'
+		}), 401
+	except Exception as e:
+		logger.error(f"Get user error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to get user',
+			'error': 'INTERNAL_ERROR'
 		}), 500
 
 @app.errorhandler(404)

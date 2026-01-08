@@ -133,3 +133,4 @@ echo "4. Stop all services:"
 echo "   kill $ML_PID $BACKEND_PID"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+

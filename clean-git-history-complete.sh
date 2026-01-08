@@ -141,3 +141,4 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "🔒 Your local .env file is safe (gitignored) and was NOT affected."
 echo "   Your credentials remain in: fullstack_recsys/backend/.env"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
