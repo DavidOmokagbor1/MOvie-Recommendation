@@ -262,13 +262,27 @@ def get_trending():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/init', methods=['GET'])
+@app.route('/init', methods=['GET', 'OPTIONS'])
 def init():
 	"""Initialize and return all movies"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
 		# Use unified database helper (works with both SQLite and MongoDB)
 		all_items = get_all_movies()
-		all_items = sorted(all_items, key=lambda x: x["id"])
+		
+		# Validate we got movies
+		if not all_items:
+			logger.warning("No movies found in database")
+			return jsonify({
+				'result': [],
+				'message': 'No movies found in database',
+				'count': 0
+			}), 200
+		
+		all_items = sorted(all_items, key=lambda x: x.get("id", 0))
 		
 		return jsonify({'result': all_items}), 200
 		
@@ -316,11 +330,36 @@ def get_movies():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/<int:movie_id>', methods=['GET'])
+@app.route('/api/movies/<movie_id>', methods=['GET', 'OPTIONS'])
 def get_movie(movie_id):
 	"""Get a specific movie by ID"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
-		movie = get_movie_by_id(movie_id)
+		# Validate movie_id
+		if not movie_id:
+			return jsonify({
+				'message': 'Movie ID is required',
+				'error': 'MISSING_ID'
+			}), 400
+		
+		# Try to convert to int if it's a numeric string
+		try:
+			movie_id_int = int(movie_id)
+			if movie_id_int < 0:
+				return jsonify({
+					'message': 'Movie ID must be a positive number',
+					'error': 'INVALID_ID'
+				}), 400
+			movie = get_movie_by_id(movie_id_int)
+		except ValueError:
+			# If movie_id is not numeric, return not found
+			return jsonify({
+				'message': f'Invalid movie ID format: {movie_id}',
+				'error': 'INVALID_ID_FORMAT'
+			}), 400
 		
 		if movie:
 			return jsonify({'result': movie}), 200

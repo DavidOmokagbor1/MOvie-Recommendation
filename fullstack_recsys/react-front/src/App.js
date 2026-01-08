@@ -485,8 +485,8 @@ class App extends React.Component {
           const response = await fetch(url, options);
           if (!response.ok) {
             // Don't retry on client errors (4xx), only server errors (5xx) and network errors
-            if (response.status >= 400 && response.status < 500 && i < retries) {
-              // Wait before retry for client errors
+            if (response.status >= 500 && i < retries) {
+              // Wait before retry for server errors (exponential backoff)
               await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
               continue;
             }
@@ -495,14 +495,19 @@ class App extends React.Component {
           return response;
         } catch (error) {
           if (i === retries) throw error;
-          // Wait before retry (exponential backoff)
+          // Wait before retry (exponential backoff) for network errors
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         }
       }
     };
     
     fetchWithRetry(recommendUrl, requestOptions)
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         // Only update state if component is still mounted
         if (!this._isMounted) {
