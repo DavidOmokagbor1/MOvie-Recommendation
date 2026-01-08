@@ -498,11 +498,11 @@
 /* Always visible add button badge */
 .add-button-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 44px;
-  height: 44px;
-  background: rgba(0, 0, 0, 0.75);
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 50%;
@@ -513,8 +513,8 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 15;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
 }
 
 .add-button-badge:hover {
@@ -557,8 +557,9 @@
 }
 
 .movie-info-modern {
-  padding: 12px;
+  padding: 8px;
   background: rgba(0, 0, 0, 0.3);
+  /* More compact info section */
 }
 
 .movie-info-modern h3,
@@ -678,14 +679,14 @@
   }
   
   .movies-grid {
-    /* On smaller screens, still show multiple movies */
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 10px;
+    /* On smaller screens, show even more movies */
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+    gap: 8px;
   }
   
   .compact-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 6px;
   }
 }
 
