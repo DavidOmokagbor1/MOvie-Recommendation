@@ -244,19 +244,21 @@
 }
 
 .column {
-  background: rgba(20, 24, 35, 0.6);
+  background: rgba(20, 24, 35, 0.8);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   height: calc(100vh - 280px);
-  min-height: 600px;
+  min-height: 650px;
+  max-height: calc(100vh - 280px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .column:hover {
@@ -289,9 +291,16 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+  padding: 16px;
+  padding-bottom: 20px;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  border-radius: 12px 12px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(10px);
 }
 
 .section-header-modern .icon {
@@ -308,10 +317,15 @@
 }
 
 .section-subtitle {
-  color: rgba(255, 255, 255, 0.6) !important;
-  font-size: 0.9rem !important;
-  margin: 4px 0 0 0 !important;
-  font-weight: 400;
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: 0.95rem !important;
+  margin: 6px 0 0 0 !important;
+  font-weight: 500;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ============================================
@@ -575,8 +589,12 @@
    EMPTY MESSAGES
    ============================================ */
 .empty-message-modern {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  border: 2px dashed rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  padding: 40px 20px !important;
+  text-align: center !important;
+  margin: 20px 0 !important;
   border-radius: 16px !important;
   padding: 40px !important;
   text-align: center !important;
