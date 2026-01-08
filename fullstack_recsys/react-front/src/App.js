@@ -703,6 +703,16 @@ class App extends React.Component {
       });
     }
     
+    // Show login page if not authenticated
+    if (this.state.showLogin) {
+      return (
+        <div className="App">
+          <Login apiUrl={config.API_URL} onLogin={this.handleLogin} toastRef={this.toastRef} />
+          <Toast ref={this.toastRef} />
+        </div>
+      );
+    }
+    
     return (
       <div className="App">
         <Toast ref={this.toastRef} />

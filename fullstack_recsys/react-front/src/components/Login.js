@@ -1,5 +1,6 @@
 import React from 'react';
 import { Form, Button, Message, Segment, Header, Icon } from 'semantic-ui-react';
+import config from '../config';
 import './Login.css';
 
 class Login extends React.Component {
@@ -13,8 +14,112 @@ class Login extends React.Component {
       showRegister: false,
       email: '',
       age: '',
-      gender: ''
+      gender: '',
+      trendingMovies: [],
+      backgroundMovies: [],
+      currentTrendingIndex: 0,
+      trendingChanging: false
     };
+    this.trendingInterval = null;
+    this._isMounted = false;
+  }
+
+  componentDidMount() {
+    this._isMounted = true;
+    this.loadTrendingMovies();
+    this.loadBackgroundMovies();
+    this.startTrendingAutoSlide();
+  }
+
+  componentWillUnmount() {
+    this._isMounted = false;
+    if (this.trendingInterval) {
+      clearInterval(this.trendingInterval);
+      this.trendingInterval = null;
+    }
+  }
+
+  loadTrendingMovies = () => {
+    const trendingUrl = `${config.API_URL}/api/trending`;
+    
+    fetch(trendingUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const trendingMovies = data.result || [];
+        if (trendingMovies.length > 0 && this._isMounted) {
+          this.setState({ trendingMovies: trendingMovies.slice(0, 5) });
+        }
+      })
+      .catch(error => {
+        console.warn('[Login] Error loading trending movies:', error);
+      });
+  }
+
+  loadBackgroundMovies = () => {
+    const moviesUrl = `${config.API_URL}/init`;
+    
+    fetch(moviesUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const movies = data.result || [];
+        // Get movies with valid posters for background
+        const moviesWithPosters = movies
+          .filter(m => m && m.poster && 
+            m.poster !== 'null' && 
+            m.poster !== 'None' && 
+            !m.poster.includes('via.placeholder.com'))
+          .slice(0, 20); // Use 20 movies for background grid
+        
+        if (this._isMounted) {
+          this.setState({ backgroundMovies: moviesWithPosters });
+        }
+      })
+      .catch(error => {
+        console.warn('[Login] Error loading background movies:', error);
+      });
+  }
+
+  startTrendingAutoSlide = () => {
+    this.trendingInterval = setInterval(() => {
+      if (!this._isMounted) return;
+      
+      const trendingCount = this.state.trendingMovies.length;
+      if (trendingCount === 0) return;
+      
+      const nextIndex = (this.state.currentTrendingIndex + 1) % trendingCount;
+      
+      // Trigger fade animation
+      this.setState({ trendingChanging: true });
+      
+      // Update index and reset animation after transition
+      setTimeout(() => {
+        if (!this._isMounted) return;
+        this.setState({ 
+          currentTrendingIndex: nextIndex,
+          trendingChanging: false 
+        });
+      }, 400);
+    }, 4000); // Change every 4 seconds
   }
 
   handleInputChange = (e, { name, value }) => {
@@ -143,13 +248,91 @@ class Login extends React.Component {
     });
   }
 
+  handleDemoLogin = async (e) => {
+    if (e) e.preventDefault();
+    // Auto-fill demo credentials
+    this.setState({ 
+      username: 'demo', 
+      password: 'demo123',
+      error: null 
+    }, () => {
+      // Submit login after state update
+      setTimeout(() => {
+        this.handleLogin(e);
+      }, 100);
+    });
+  }
+
+  handleTrendingClick = (index) => {
+    if (index === this.state.currentTrendingIndex) return;
+    this.setState({ currentTrendingIndex: index });
+    // Reset interval
+    if (this.trendingInterval) {
+      clearInterval(this.trendingInterval);
+    }
+    this.startTrendingAutoSlide();
+  }
+
   render() {
-    const { showRegister, loading, error, username, password, email, age, gender } = this.state;
+    const { showRegister, loading, error, username, password, email, age, gender, trendingMovies, backgroundMovies, currentTrendingIndex, trendingChanging } = this.state;
+    const currentTrending = trendingMovies[currentTrendingIndex] || null;
 
     return (
       <div className="login-container">
-        <Segment className="login-segment" raised>
-          <Header as="h2" icon textAlign="center" className="login-header">
+        {/* Background movie posters grid */}
+        <div className="login-background">
+          {backgroundMovies.map((movie, index) => (
+            <div key={movie.id || index} className="background-poster">
+              {movie.poster && (
+                <img 
+                  src={movie.poster} 
+                  alt={movie.title || 'Movie poster'}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
+            </div>
+          ))}
+          <div className="background-overlay"></div>
+        </div>
+
+        {/* Trending movie showcase */}
+        {currentTrending && (
+          <div className="trending-showcase">
+            <div className={`trending-slide-container ${trendingChanging ? 'changing' : ''}`}>
+              <div 
+                className="trending-featured"
+                style={{
+                  backgroundImage: currentTrending.poster ? `url(${currentTrending.poster})` : 'none'
+                }}
+              >
+                <div className="trending-featured-overlay">
+                  <div className="trending-featured-content">
+                    <Icon name="fire" className="trending-icon" />
+                    <h3>Trending Now</h3>
+                    <h2>{currentTrending.title || 'Featured Movie'}</h2>
+                    <p>{currentTrending.genre || ''} • {currentTrending.date || ''}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {trendingMovies.length > 1 && (
+              <div className="trending-indicators">
+                {trendingMovies.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`trending-dot ${index === currentTrendingIndex ? 'active' : ''}`}
+                    onClick={() => this.handleTrendingClick(index)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Login form */}
+        <div className="login-form-wrapper">
+          <Segment className="login-segment" raised>
+            <Header as="h2" icon textAlign="center" className="login-header">
             <Icon name="film" />
             <Header.Content>
               {showRegister ? 'Create Account' : 'Welcome Back'}
@@ -165,6 +348,28 @@ class Login extends React.Component {
             <Message negative>
               <Message.Header>Error</Message.Header>
               <p>{error}</p>
+            </Message>
+          )}
+
+          {!showRegister && (
+            <Message info style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <Message.Header>
+                <Icon name="info circle" /> Try Demo Account
+              </Message.Header>
+              <p style={{ marginTop: '10px', fontSize: '14px' }}>
+                <strong>Username:</strong> demo<br />
+                <strong>Password:</strong> demo123
+              </p>
+              <Button 
+                color="green" 
+                size="small" 
+                onClick={this.handleDemoLogin}
+                loading={loading}
+                disabled={loading}
+                style={{ marginTop: '10px' }}
+              >
+                <Icon name="play" /> Try Demo Account
+              </Button>
             </Message>
           )}
 
@@ -269,6 +474,7 @@ class Login extends React.Component {
             </Message>
           </div>
         </Segment>
+        </div>
       </div>
     );
   }
