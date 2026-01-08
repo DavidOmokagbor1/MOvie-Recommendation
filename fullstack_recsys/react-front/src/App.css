@@ -238,9 +238,11 @@
 
 .three-column-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 24px;
+  /* Premium layout: More space for browsing, compact sidebars */
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
   align-items: flex-start;
+  min-height: calc(100vh - 280px);
 }
 
 .column {
@@ -369,10 +371,11 @@
 }
 
 .compact-grid {
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)) !important;
-  gap: 8px !important;
+  /* Premium compact size for selected and recommended movies */
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)) !important;
+  gap: 6px !important;
   /* Ensure selected and recommended movies are clearly visible */
-  padding: 8px;
+  padding: 6px;
 }
 
 .scrollable-grid {
@@ -562,9 +565,10 @@
 }
 
 .movie-info-modern {
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  /* More compact info section */
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  /* Premium compact info section */
+  backdrop-filter: blur(5px);
 }
 
 .movie-info-modern h3,
