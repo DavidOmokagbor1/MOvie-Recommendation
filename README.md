@@ -21,7 +21,11 @@
 
 ## 📸 Application Screenshot
 
-  <img width="3774" height="2180" alt="image" src="https://github.com/user-attachments/assets/432c0e64-447a-4fa6-83aa-21d56f3a5070" />
+ 
+
+https://github.com/user-attachments/assets/b17b671e-da2e-49fd-9378-e4cc87f95283
+
+
 
   
 
