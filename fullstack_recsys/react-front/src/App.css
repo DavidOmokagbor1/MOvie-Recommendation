@@ -334,7 +334,7 @@
 .movies-grid {
   display: grid;
   /* Show MORE movies per row - smaller cards for better visibility (like Rotten Tomatoes) */
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)) !important;
   gap: 10px;
   overflow-y: auto;
   overflow-x: hidden;
