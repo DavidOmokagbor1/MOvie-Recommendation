@@ -45,20 +45,52 @@ def recommend():
 			return jsonify({'message': 'Model name is required', 'error': 'MISSING_MODEL'}), 400
 		
 		# Call recommendation API
-		try:
-			response = requests.post(
-				API_ADDRESS % '/api/recommend', 
-				json=data,
-				timeout=30
-			)
-			response.raise_for_status()
-			res = response.json()
-		except requests.exceptions.RequestException as e:
-			logger.error(f"API request failed: {str(e)}")
-			return jsonify({
-				'message': 'Recommendation service unavailable',
-				'error': 'API_ERROR'
-			}), 503
+		# Render free tier services sleep after inactivity, so we need longer timeout and retry
+		ml_api_url = API_ADDRESS % '/api/recommend'
+		max_retries = 2
+		timeout = 60  # Increased timeout for sleeping services
+		
+		for attempt in range(max_retries):
+			try:
+				response = requests.post(
+					ml_api_url, 
+					json=data,
+					timeout=timeout
+				)
+				response.raise_for_status()
+				res = response.json()
+				break  # Success, exit retry loop
+			except requests.exceptions.Timeout as e:
+				if attempt < max_retries - 1:
+					logger.warning(f"ML API timeout (attempt {attempt + 1}/{max_retries}), retrying...")
+					import time
+					time.sleep(2)  # Brief wait before retry
+					continue
+				else:
+					logger.error(f"ML API request timed out after {max_retries} attempts: {str(e)}")
+					return jsonify({
+						'message': 'Recommendation service is taking too long to respond. The service may be starting up. Please try again in a moment.',
+						'error': 'API_TIMEOUT'
+					}), 504
+			except requests.exceptions.ConnectionError as e:
+				if attempt < max_retries - 1:
+					logger.warning(f"ML API connection error (attempt {attempt + 1}/{max_retries}), retrying...")
+					import time
+					time.sleep(3)  # Longer wait for connection errors
+					continue
+				else:
+					logger.error(f"ML API connection failed after {max_retries} attempts: {str(e)}")
+					return jsonify({
+						'message': 'Cannot connect to recommendation service. The service may be starting up. Please try again.',
+						'error': 'API_CONNECTION_ERROR'
+					}), 503
+			except requests.exceptions.RequestException as e:
+				logger.error(f"ML API request failed: {str(e)}")
+				return jsonify({
+					'message': 'Recommendation service unavailable',
+					'error': 'API_ERROR',
+					'details': str(e)
+				}), 503
 		
 		if 'result' not in res:
 			return jsonify({'message': 'Invalid response from recommendation API', 'error': 'INVALID_RESPONSE'}), 500
