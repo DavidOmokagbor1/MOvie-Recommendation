@@ -364,8 +364,10 @@
 }
 
 .compact-grid {
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+  gap: 10px;
+  /* Ensure selected and recommended movies are clearly visible */
+  padding: 8px;
 }
 
 .scrollable-grid {
