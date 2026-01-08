@@ -369,8 +369,8 @@
 }
 
 .compact-grid {
-  grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)) !important;
+  gap: 8px !important;
   /* Ensure selected and recommended movies are clearly visible */
   padding: 8px;
 }
@@ -685,13 +685,13 @@
   
   .movies-grid {
     /* On smaller screens, show even more movies */
-    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)) !important;
+    gap: 6px !important;
   }
   
   .compact-grid {
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)) !important;
+    gap: 5px !important;
   }
 }
 
