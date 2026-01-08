@@ -1,0 +1,56 @@
+# Cursor AI Rules - Code Modification Guidelines
+
+## Core Principle: Preserve Working Code
+**Do not modify code that is already correct and working perfectly.** Only modify code that is directly related to the specific issue or feature being addressed.
+
+## Detailed Guidelines
+
+### 1. Code Modification Rules
+- **Before making changes**: Verify what code is actually broken vs. what is working correctly
+- **Scope of changes**: Only modify the specific code sections needed to fix the reported issue
+- **No unnecessary refactoring**: Do not refactor, optimize, or "improve" working code unless explicitly requested
+- **Preserve functionality**: Maintain existing working functionality while fixing issues
+- **Ask before changing**: If unsure whether code should be changed, ask for clarification rather than making assumptions
+- **Isolated fixes**: When fixing one issue, do not introduce changes to unrelated working code
+
+### 2. Error Prevention
+- **Avoid breaking changes**: Do not modify working code that could introduce errors or conflicts
+- **Test before changing**: Understand the full context before modifying any code
+- **Minimal changes**: Make the smallest possible change to fix the issue
+- **Preserve patterns**: Maintain existing code patterns and conventions unless explicitly asked to change them
+
+### 3. When to Modify Code
+✅ **DO modify**:
+- Code that is directly causing the reported error
+- Code that is explicitly requested to be changed
+- Code that is clearly broken or non-functional
+- Code that needs to be updated for a specific feature request
+
+❌ **DON'T modify**:
+- Working code that is unrelated to the issue
+- Code that "could be better" but is currently working
+- Code that follows different patterns but works correctly
+- Code that the user hasn't mentioned as problematic
+
+### 4. Best Practices
+- **Read first, modify second**: Always read and understand code before modifying it
+- **Verify the problem**: Confirm what's actually broken before making changes
+- **Incremental changes**: Make small, focused changes rather than large refactors
+- **Preserve tests**: Don't break existing tests unless fixing them is the goal
+- **Documentation**: Only update documentation if it's directly related to the change
+
+### 5. Conflict Prevention
+- **Check dependencies**: Ensure changes don't break dependent code
+- **Maintain interfaces**: Don't change function signatures or APIs unless necessary
+- **Version compatibility**: Consider backward compatibility when making changes
+- **Review impact**: Think about the broader impact of changes before implementing
+
+## Example Scenarios
+
+**Good**: User reports "CORS error on /recommend endpoint" → Only modify CORS configuration, don't change the recommendation logic that's working.
+
+**Bad**: User reports "CORS error" → Refactoring the entire recommendation system, changing database queries, and modifying unrelated endpoints.
+
+**Good**: User says "fix MongoDB connection" → Only fix the MongoDB connection code, don't change SQLite fallback that's working.
+
+**Bad**: User says "fix MongoDB" → Changing database helper functions, modifying all database queries, and refactoring unrelated code.

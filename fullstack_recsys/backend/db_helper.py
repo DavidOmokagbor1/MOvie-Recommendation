@@ -134,20 +134,28 @@ def get_movie_by_id(movie_id):
 
 def get_movies_by_ids(movie_ids):
     """Get multiple movies by their IDs"""
-    if use_mongodb():
+    mongodb = get_mongodb()
+    if mongodb is not None:
         try:
             movies_collection = mongodb['movies']
             movies = list(movies_collection.find({'_id': {'$in': movie_ids}}))
-            return [
-                {
+            result = []
+            for movie in movies:
+                poster = movie.get('poster')
+                # Ensure poster is a string or None, not empty string
+                if poster and str(poster).strip() and str(poster).lower() not in ['null', 'none', '']:
+                    poster_value = str(poster).strip()
+                else:
+                    poster_value = None
+                
+                result.append({
                     "id": movie.get('_id'),
                     "title": movie.get('title'),
                     "genre": movie.get('genre'),
                     "date": movie.get('date'),
-                    "poster": movie.get('poster')
-                }
-                for movie in movies
-            ]
+                    "poster": poster_value
+                })
+            return result
         except Exception as e:
             logger.error(f"MongoDB query error: {e}, falling back to SQLite")
             # Fall through to SQLite
