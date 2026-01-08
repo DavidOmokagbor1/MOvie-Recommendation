@@ -25,6 +25,7 @@ allowed_origins = [
     "http://localhost:5052",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5052",
+    "https://movie-recommender-delta-eight.vercel.app",  # Vercel frontend
 ]
 
 # Add Vercel domain from environment variable if set
@@ -36,24 +37,20 @@ if vercel_url:
     else:
         allowed_origins.append(vercel_url)
 
-# Allow all origins in development, restrict in production
-if os.getenv('FLASK_ENV') == 'production':
-    # TEMPORARY: Allow all origins to fix CORS issue
-    # TODO: Restrict to specific domains once verified working
-    # In production, allow all origins for now (can be restricted later)
-    CORS(app, resources={
-        r"/*": {
-            "origins": "*",  # Allow all origins temporarily
-            "methods": ["GET", "POST", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": False
-        }
-    })
-    logger.info(f"CORS configured for production (allowing all origins temporarily). Vercel URL: {vercel_url}")
-else:
-    # Development: allow all origins
-    CORS(app, resources={r"/*": {"origins": "*"}})
-    logger.info("CORS configured for development (allowing all origins)")
+# Configure CORS to handle preflight requests properly
+# This fixes the "Response to preflight request doesn't pass access control check" error
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",  # Allow all origins (can be restricted to allowed_origins list if needed)
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+        "expose_headers": ["Content-Type", "Content-Length", "Authorization"],
+        "supports_credentials": False,
+        "max_age": 3600  # Cache preflight for 1 hour
+    }
+}, supports_credentials=False)
+
+logger.info(f"CORS configured. Allowed origins: {allowed_origins}. Vercel URL: {vercel_url}")
 
 # SQLAlchemy (for backward compatibility)
 db = SQLAlchemy()

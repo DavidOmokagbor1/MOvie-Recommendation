@@ -25,9 +25,13 @@ if ML_API_BASE.endswith('%s'):
 else:
     API_ADDRESS = f"{ML_API_BASE}%s"
 
-@app.route('/recommend', methods=['POST'])
+@app.route('/recommend', methods=['POST', 'OPTIONS'])
 def recommend():
 	"""Get movie recommendations"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
 		data = request.get_json()
 		
@@ -90,9 +94,13 @@ def recommend():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/trending', methods=['GET'])
+@app.route('/api/trending', methods=['GET', 'OPTIONS'])
 def get_trending():
 	"""Get trending movies - either from TMDB API or sorted by date"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
 		# Try to get trending from TMDB if API key is available
 		tmdb_api_key = os.getenv('TMDB_API_KEY')
@@ -200,7 +208,7 @@ def init():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies', methods=['GET'])
+@app.route('/api/movies', methods=['GET', 'OPTIONS'])
 def get_movies():
 	"""Get all movies with optional pagination"""
 	try:
@@ -258,12 +266,29 @@ def get_movie(movie_id):
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/<int:movie_id>/details', methods=['GET'])
+@app.route('/api/movies/<movie_id>/details', methods=['GET', 'OPTIONS'])
 def get_movie_details(movie_id):
 	"""Get enhanced movie details with cast, crew, and additional info from TMDB"""
 	try:
-		# Get basic movie info from our database
-		movie = get_movie_by_id(movie_id)
+		# Handle OPTIONS preflight request
+		if request.method == 'OPTIONS':
+			return '', 200
+		
+		# Try to convert to int if it's a numeric string, otherwise use as-is
+		try:
+			movie_id_int = int(movie_id)
+			movie = get_movie_by_id(movie_id_int)
+		except ValueError:
+			# If movie_id is not numeric (e.g., "tmdb_1242898"), try to extract numeric part
+			import re
+			match = re.search(r'(\d+)', str(movie_id))
+			if match:
+				movie_id_int = int(match.group(1))
+				movie = get_movie_by_id(movie_id_int)
+				logger.info(f"Extracted numeric ID {movie_id_int} from {movie_id}")
+			else:
+				logger.warning(f"Non-numeric movie_id received and no numeric part found: {movie_id}")
+				movie = None
 		
 		if not movie:
 			return jsonify({
@@ -293,7 +318,7 @@ def get_movie_details(movie_id):
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/search', methods=['GET'])
+@app.route('/api/movies/search', methods=['GET', 'OPTIONS'])
 def search_movies():
 	"""Search movies by title or genre"""
 	try:
