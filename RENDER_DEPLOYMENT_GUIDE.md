@@ -47,7 +47,7 @@ In Render dashboard → Your service → **Environment** tab, click **"Add Envir
 
 **Required:**
 ```
-MONGODB_URI=mongodb+srv://username:password@movierecommender.x0gaqcb.mongodb.net/?appName=MovieRecommender
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=MovieRecommender
 FLASK_ENV=production
 PYTHON_VERSION=3.9.6
 ```

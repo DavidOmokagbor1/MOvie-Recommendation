@@ -8,26 +8,31 @@ import requests
 
 from flask import render_template
 
-from app import app, db, migrate
+from app import app, db, migrate, flask_bcrypt
 from app.model import User, Movie, Interaction
 from db_helper import get_all_movies, get_movies_by_ids, get_movie_by_id, use_mongodb, save_interaction
 from tmdb_helper import get_enhanced_movie_details
+import jwt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Get ML API URL from environment variable, with fallback for local development
-ML_API_BASE = os.getenv('ML_API_URL', 'http://0.0.0.0:8000')
+ML_API_BASE = os.getenv('ML_API_URL', 'http://localhost:8000')
 # Ensure the URL format is correct for string formatting
 if ML_API_BASE.endswith('%s'):
     API_ADDRESS = ML_API_BASE
 else:
     API_ADDRESS = f"{ML_API_BASE}%s"
 
-@app.route('/recommend', methods=['POST'])
+@app.route('/recommend', methods=['POST', 'OPTIONS'])
 def recommend():
 	"""Get movie recommendations"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
 		data = request.get_json()
 		
@@ -37,30 +42,101 @@ def recommend():
 		if 'context' not in data or not data['context']:
 			return jsonify({'message': 'Context (movie IDs) is required', 'error': 'MISSING_CONTEXT'}), 400
 		
+		if not isinstance(data['context'], list) or len(data['context']) == 0:
+			return jsonify({'message': 'Context must be a non-empty array of movie IDs', 'error': 'INVALID_CONTEXT'}), 400
+		
+		# Validate context contains only integers
+		try:
+			context_ids = [int(id) for id in data['context']]
+			if len(context_ids) == 0:
+				return jsonify({'message': 'Context must contain at least one valid movie ID', 'error': 'EMPTY_CONTEXT'}), 400
+		except (ValueError, TypeError):
+			return jsonify({'message': 'Context must contain only numeric movie IDs', 'error': 'INVALID_CONTEXT_FORMAT'}), 400
+		
 		if 'model' not in data:
 			return jsonify({'message': 'Model name is required', 'error': 'MISSING_MODEL'}), 400
 		
-		# Call recommendation API
-		try:
-			response = requests.post(
-				API_ADDRESS % '/api/recommend', 
-				json=data,
-				timeout=30
-			)
-			response.raise_for_status()
-			res = response.json()
-		except requests.exceptions.RequestException as e:
-			logger.error(f"API request failed: {str(e)}")
+		# Validate model name
+		valid_models = ['EASE', 'ItemKNN', 'NeuralMF', 'DeepFM']
+		if data['model'] not in valid_models:
 			return jsonify({
-				'message': 'Recommendation service unavailable',
-				'error': 'API_ERROR'
-			}), 503
+				'message': f'Invalid model. Must be one of: {", ".join(valid_models)}',
+				'error': 'INVALID_MODEL',
+				'available_models': valid_models
+			}), 400
+		
+		# Call recommendation API
+		# Render free tier services sleep after inactivity, so we need longer timeout and retry
+		ml_api_url = API_ADDRESS % '/api/recommend'
+		max_retries = 2
+		timeout = 60  # Increased timeout for sleeping services
+		
+		for attempt in range(max_retries):
+			try:
+				response = requests.post(
+					ml_api_url, 
+					json=data,
+					timeout=timeout
+				)
+				response.raise_for_status()
+				res = response.json()
+				break  # Success, exit retry loop
+			except requests.exceptions.Timeout as e:
+				if attempt < max_retries - 1:
+					logger.warning(f"ML API timeout (attempt {attempt + 1}/{max_retries}), retrying...")
+					import time
+					time.sleep(2)  # Brief wait before retry
+					continue
+				else:
+					logger.error(f"ML API request timed out after {max_retries} attempts: {str(e)}")
+					return jsonify({
+						'message': 'Recommendation service is taking too long to respond. The service may be starting up. Please try again in a moment.',
+						'error': 'API_TIMEOUT'
+					}), 504
+			except requests.exceptions.ConnectionError as e:
+				if attempt < max_retries - 1:
+					logger.warning(f"ML API connection error (attempt {attempt + 1}/{max_retries}), retrying...")
+					import time
+					time.sleep(3)  # Longer wait for connection errors
+					continue
+				else:
+					logger.error(f"ML API connection failed after {max_retries} attempts: {str(e)}")
+					return jsonify({
+						'message': 'Cannot connect to recommendation service. The service may be starting up. Please try again.',
+						'error': 'API_CONNECTION_ERROR'
+					}), 503
+			except requests.exceptions.RequestException as e:
+				logger.error(f"ML API request failed: {str(e)}")
+				return jsonify({
+					'message': 'Recommendation service unavailable',
+					'error': 'API_ERROR',
+					'details': str(e)
+				}), 503
 		
 		if 'result' not in res:
+			logger.error(f"ML API response missing 'result' field: {res}")
 			return jsonify({'message': 'Invalid response from recommendation API', 'error': 'INVALID_RESPONSE'}), 500
 		
+		if not res['result'] or len(res['result']) == 0:
+			logger.warning(f"ML API returned empty recommendations for context: {data.get('context')}")
+			return jsonify({
+				'message': 'No recommendations found for the selected movies',
+				'error': 'NO_RECOMMENDATIONS',
+				'result': []
+			}), 200
+		
 		# Get movie details from database using unified helper
+		logger.info(f"Looking up {len(res['result'])} recommended movie IDs: {res['result'][:10]}")
 		recommend_items = get_movies_by_ids(res['result'])
+		logger.info(f"Found {len(recommend_items)} movies in database for recommended IDs")
+		
+		if not recommend_items or len(recommend_items) == 0:
+			logger.error(f"Could not find any movies in database for recommended IDs: {res['result']}")
+			return jsonify({
+				'message': 'Recommended movies not found in database',
+				'error': 'MOVIES_NOT_FOUND',
+				'result': []
+			}), 200
 		
 		# Save recommendation interaction if user is authenticated
 		user_id = None
@@ -90,13 +166,124 @@ def recommend():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/init', methods=['GET'])
+@app.route('/api/trending', methods=['GET', 'OPTIONS'])
+def get_trending():
+	"""Get trending movies - either from TMDB API or sorted by date"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		# Try to get trending from TMDB if API key is available
+		tmdb_api_key = os.getenv('TMDB_API_KEY')
+		if tmdb_api_key:
+			try:
+				trending_url = 'https://api.themoviedb.org/3/trending/movie/week'
+				params = {
+					'api_key': tmdb_api_key,
+					'language': 'en-US'
+				}
+				response = requests.get(trending_url, params=params, timeout=10)
+				if response.status_code == 200:
+					data = response.json()
+					trending_tmdb = data.get('results', [])[:10]
+					
+					# Map TMDB movies to our format
+					trending_movies = []
+					for tmdb_movie in trending_tmdb:
+						# Try to find matching movie in our database by title
+						all_movies = get_all_movies()
+						matching = next((m for m in all_movies if m.get('title', '').lower() == tmdb_movie.get('title', '').lower()), None)
+						
+						if matching:
+							# Use our database movie but update poster if TMDB has better one
+							if tmdb_movie.get('poster_path'):
+								matching['poster'] = f"https://image.tmdb.org/t/p/w500{tmdb_movie.get('poster_path')}"
+							trending_movies.append(matching)
+						else:
+							# Create movie entry from TMDB data
+							# Handle genre_ids - they're integers, not objects
+							genre_ids = tmdb_movie.get('genre_ids', [])
+							genre_str = 'Action'  # Default, since we can't map IDs without genre lookup
+							
+							trending_movies.append({
+								'id': f"tmdb_{tmdb_movie.get('id')}",
+								'title': tmdb_movie.get('title'),
+								'genre': genre_str,
+								'date': tmdb_movie.get('release_date', ''),
+								'poster': f"https://image.tmdb.org/t/p/w500{tmdb_movie.get('poster_path')}" if tmdb_movie.get('poster_path') else None
+							})
+					
+					if trending_movies:
+						return jsonify({'result': trending_movies}), 200
+			except Exception as e:
+				logger.warning(f"TMDB trending API error: {e}, falling back to date-based sorting")
+		
+		# Fallback: Get movies sorted by date (most recent)
+		all_items = get_all_movies()
+		# Filter movies with valid posters
+		movies_with_posters = [
+			m for m in all_items 
+			if m and m.get('poster') and 
+			m.get('poster') != 'null' and 
+			m.get('poster') != 'None' and
+			'via.placeholder.com' not in str(m.get('poster', ''))
+		]
+		
+		# Sort by date (most recent first), handle missing dates
+		def get_date_sort_key(movie):
+			date_str = movie.get('date', '') or ''
+			if not date_str:
+				return '0000-01-01'  # Put movies without dates at the end
+			# Try to parse date, return as-is if it's already a string
+			try:
+				# If it's already YYYY-MM-DD format, use it directly
+				if len(date_str) >= 10 and date_str[4] == '-':
+					return date_str[:10]
+				# Try to parse other formats
+				from datetime import datetime
+				parsed = datetime.strptime(date_str[:10], '%Y-%m-%d')
+				return parsed.strftime('%Y-%m-%d')
+			except:
+				return date_str[:10] if len(date_str) >= 10 else '0000-01-01'
+		
+		trending = sorted(
+			movies_with_posters,
+			key=get_date_sort_key,
+			reverse=True
+		)[:10]
+		
+		logger.info(f"Returning {len(trending)} trending movies (date-based)")
+		return jsonify({'result': trending}), 200
+		
+	except Exception as e:
+		logger.error(f"Trending error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to get trending movies',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
+@app.route('/init', methods=['GET', 'OPTIONS'])
 def init():
 	"""Initialize and return all movies"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
 		# Use unified database helper (works with both SQLite and MongoDB)
 		all_items = get_all_movies()
-		all_items = sorted(all_items, key=lambda x: x["id"])
+		
+		# Validate we got movies
+		if not all_items:
+			logger.warning("No movies found in database")
+			return jsonify({
+				'result': [],
+				'message': 'No movies found in database',
+				'count': 0
+			}), 200
+		
+		all_items = sorted(all_items, key=lambda x: x.get("id", 0))
 		
 		return jsonify({'result': all_items}), 200
 		
@@ -107,7 +294,7 @@ def init():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies', methods=['GET'])
+@app.route('/api/movies', methods=['GET', 'OPTIONS'])
 def get_movies():
 	"""Get all movies with optional pagination"""
 	try:
@@ -144,11 +331,36 @@ def get_movies():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/<int:movie_id>', methods=['GET'])
+@app.route('/api/movies/<movie_id>', methods=['GET', 'OPTIONS'])
 def get_movie(movie_id):
 	"""Get a specific movie by ID"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
-		movie = get_movie_by_id(movie_id)
+		# Validate movie_id
+		if not movie_id:
+			return jsonify({
+				'message': 'Movie ID is required',
+				'error': 'MISSING_ID'
+			}), 400
+		
+		# Try to convert to int if it's a numeric string
+		try:
+			movie_id_int = int(movie_id)
+			if movie_id_int < 0:
+				return jsonify({
+					'message': 'Movie ID must be a positive number',
+					'error': 'INVALID_ID'
+				}), 400
+			movie = get_movie_by_id(movie_id_int)
+		except ValueError:
+			# If movie_id is not numeric, return not found
+			return jsonify({
+				'message': f'Invalid movie ID format: {movie_id}',
+				'error': 'INVALID_ID_FORMAT'
+			}), 400
 		
 		if movie:
 			return jsonify({'result': movie}), 200
@@ -165,12 +377,45 @@ def get_movie(movie_id):
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/<int:movie_id>/details', methods=['GET'])
+@app.route('/api/movies/<movie_id>/details', methods=['GET', 'OPTIONS'])
 def get_movie_details(movie_id):
 	"""Get enhanced movie details with cast, crew, and additional info from TMDB"""
+	# Handle OPTIONS preflight request
+	if request.method == 'OPTIONS':
+		return '', 200
+	
 	try:
-		# Get basic movie info from our database
-		movie = get_movie_by_id(movie_id)
+		# Validate movie_id
+		if not movie_id:
+			return jsonify({
+				'message': 'Movie ID is required',
+				'error': 'MISSING_ID'
+			}), 400
+		
+		# Try to convert to int if it's a numeric string, otherwise use as-is
+		movie = None
+		try:
+			movie_id_int = int(movie_id)
+			if movie_id_int < 0:
+				return jsonify({
+					'message': 'Movie ID must be a positive number',
+					'error': 'INVALID_ID'
+				}), 400
+			movie = get_movie_by_id(movie_id_int)
+		except ValueError:
+			# If movie_id is not numeric (e.g., "tmdb_1242898"), try to extract numeric part
+			import re
+			match = re.search(r'(\d+)', str(movie_id))
+			if match:
+				movie_id_int = int(match.group(1))
+				movie = get_movie_by_id(movie_id_int)
+				logger.info(f"Extracted numeric ID {movie_id_int} from {movie_id}")
+			else:
+				logger.warning(f"Non-numeric movie_id received and no numeric part found: {movie_id}")
+				return jsonify({
+					'message': f'Invalid movie ID format: {movie_id}',
+					'error': 'INVALID_ID_FORMAT'
+				}), 400
 		
 		if not movie:
 			return jsonify({
@@ -200,7 +445,7 @@ def get_movie_details(movie_id):
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
-@app.route('/api/movies/search', methods=['GET'])
+@app.route('/api/movies/search', methods=['GET', 'OPTIONS'])
 def search_movies():
 	"""Search movies by title or genre"""
 	try:
@@ -245,6 +490,43 @@ def search_movies():
 			'message': 'Failed to search movies',
 			'error': 'INTERNAL_ERROR'
 		}), 500
+
+@app.route('/health', methods=['GET'])
+def health():
+	"""Health check endpoint"""
+	try:
+		# Check database connectivity
+		is_mongo = use_mongodb()
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				# Test MongoDB connection
+				mongodb.client.admin.command('ping')
+				db_status = 'connected'
+			else:
+				db_status = 'disconnected'
+		else:
+			# SQLite - just check if db exists
+			try:
+				db.session.execute(db.text('SELECT 1'))
+				db_status = 'connected'
+			except:
+				db_status = 'disconnected'
+		
+		return jsonify({
+			'status': 'healthy',
+			'database': 'MongoDB' if is_mongo else 'SQLite',
+			'db_status': db_status,
+			'timestamp': datetime.utcnow().isoformat()
+		}), 200
+	except Exception as e:
+		logger.error(f"Health check error: {str(e)}")
+		return jsonify({
+			'status': 'unhealthy',
+			'error': str(e),
+			'timestamp': datetime.utcnow().isoformat()
+		}), 503
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
@@ -315,6 +597,258 @@ def get_stats():
 			'message': 'Failed to get statistics',
 			'error': 'INTERNAL_ERROR',
 			'details': str(e)
+		}), 500
+
+@app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
+def register():
+	"""Register a new user"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		data = request.get_json()
+		
+		if not data:
+			return jsonify({'message': 'No data provided', 'error': 'MISSING_DATA'}), 400
+		
+		if 'username' not in data or not data['username']:
+			return jsonify({'message': 'Username is required', 'error': 'MISSING_USERNAME'}), 400
+		
+		if 'password' not in data or not data['password']:
+			return jsonify({'message': 'Password is required', 'error': 'MISSING_PASSWORD'}), 400
+		
+		if 'email' not in data or not data['email']:
+			return jsonify({'message': 'Email is required', 'error': 'MISSING_EMAIL'}), 400
+		
+		username = data['username'].strip()
+		password = data['password']
+		email = data['email'].strip()
+		age = data.get('age', -1)
+		gender = data.get('gender', '-')
+		
+		is_mongo = use_mongodb()
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				users_collection = mongodb['users']
+				existing_user = users_collection.find_one({'$or': [{'username': username}, {'email': email}]})
+				if existing_user:
+					return jsonify({
+						'message': 'Username or email already exists',
+						'error': 'USER_EXISTS'
+					}), 400
+				
+				user_doc = {
+					'username': username,
+					'email': email,
+					'password_hash': flask_bcrypt.generate_password_hash(password).decode('utf-8'),
+					'age': age if age > 0 else -1,
+					'gender': gender if gender else '-',
+					'created_at': datetime.utcnow(),
+					'is_active': True
+				}
+				result = users_collection.insert_one(user_doc)
+				user_id = result.inserted_id
+		else:
+			existing_user = User.query.filter(
+				(User.username == username) | (User.email == email)
+			).first()
+			if existing_user:
+				return jsonify({
+					'message': 'Username or email already exists',
+					'error': 'USER_EXISTS'
+				}), 400
+			
+			user = User(
+				username=username,
+				email=email,
+				age=age if age > 0 else -1,
+				gender=gender if gender else '-'
+			)
+			user.set_password(password)
+			db.session.add(user)
+			db.session.commit()
+			user_id = user.id
+		
+		token = jwt.encode(
+			{'user_id': str(user_id), 'username': username},
+			app.config['SECRET_KEY'],
+			algorithm='HS256'
+		)
+		
+		return jsonify({
+			'message': 'User registered successfully',
+			'token': token,
+			'user': {
+				'id': str(user_id),
+				'username': username,
+				'email': email,
+				'age': age,
+				'gender': gender
+			}
+		}), 201
+		
+	except Exception as e:
+		logger.error(f"Registration error: {str(e)}")
+		if db.session:
+			db.session.rollback()
+		return jsonify({
+			'message': 'Failed to register user',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
+@app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
+def login():
+	"""Login user and return JWT token"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		data = request.get_json()
+		
+		if not data:
+			return jsonify({'message': 'No data provided', 'error': 'MISSING_DATA'}), 400
+		
+		if 'username' not in data or not data['username']:
+			return jsonify({'message': 'Username is required', 'error': 'MISSING_USERNAME'}), 400
+		
+		if 'password' not in data or not data['password']:
+			return jsonify({'message': 'Password is required', 'error': 'MISSING_PASSWORD'}), 400
+		
+		username = data['username'].strip()
+		password = data['password']
+		
+		is_mongo = use_mongodb()
+		user = None
+		user_id = None
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				users_collection = mongodb['users']
+				user_doc = users_collection.find_one({'username': username})
+				if user_doc and flask_bcrypt.check_password_hash(user_doc.get('password_hash', ''), password):
+					user_id = str(user_doc['_id'])
+					user = {
+						'id': user_id,
+						'username': user_doc.get('username'),
+						'email': user_doc.get('email'),
+						'age': user_doc.get('age', -1),
+						'gender': user_doc.get('gender', '-')
+					}
+		else:
+			user_obj = User.query.filter_by(username=username).first()
+			if user_obj and user_obj.check_password(password):
+				user_id = user_obj.id
+				user = user_obj.to_dict()
+		
+		if not user:
+			return jsonify({
+				'message': 'Invalid username or password',
+				'error': 'INVALID_CREDENTIALS'
+			}), 401
+		
+		token = jwt.encode(
+			{'user_id': str(user_id), 'username': username},
+			app.config['SECRET_KEY'],
+			algorithm='HS256'
+		)
+		
+		return jsonify({
+			'message': 'Login successful',
+			'token': token,
+			'user': user
+		}), 200
+		
+	except Exception as e:
+		logger.error(f"Login error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to login',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
+@app.route('/api/auth/user', methods=['GET', 'OPTIONS'])
+def get_current_user():
+	"""Get current authenticated user"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		auth_header = request.headers.get('Authorization', '')
+		if not auth_header.startswith('Bearer '):
+			return jsonify({
+				'message': 'Authorization token required',
+				'error': 'MISSING_TOKEN'
+			}), 401
+		
+		token = auth_header.split(' ')[1]
+		token_data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+		user_id = token_data.get('user_id')
+		
+		if not user_id:
+			return jsonify({
+				'message': 'Invalid token',
+				'error': 'INVALID_TOKEN'
+			}), 401
+		
+		is_mongo = use_mongodb()
+		user = None
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				users_collection = mongodb['users']
+				try:
+					from bson.objectid import ObjectId
+					user_doc = users_collection.find_one({'_id': ObjectId(user_id)})
+				except:
+					try:
+						user_id_int = int(user_id) if user_id.isdigit() else user_id
+						user_doc = users_collection.find_one({'_id': user_id_int})
+					except:
+						user_doc = users_collection.find_one({'_id': user_id})
+				if user_doc:
+					user = {
+						'id': str(user_doc['_id']),
+						'username': user_doc.get('username'),
+						'email': user_doc.get('email'),
+						'age': user_doc.get('age', -1),
+						'gender': user_doc.get('gender', '-')
+					}
+		else:
+			user_obj = User.query.get(int(user_id))
+			if user_obj:
+				user = user_obj.to_dict()
+		
+		if not user:
+			return jsonify({
+				'message': 'User not found',
+				'error': 'USER_NOT_FOUND'
+			}), 404
+		
+		return jsonify({
+			'user': user
+		}), 200
+		
+	except jwt.ExpiredSignatureError:
+		return jsonify({
+			'message': 'Token has expired',
+			'error': 'TOKEN_EXPIRED'
+		}), 401
+	except jwt.InvalidTokenError:
+		return jsonify({
+			'message': 'Invalid token',
+			'error': 'INVALID_TOKEN'
+		}), 401
+	except Exception as e:
+		logger.error(f"Get user error: {str(e)}")
+		return jsonify({
+			'message': 'Failed to get user',
+			'error': 'INTERNAL_ERROR'
 		}), 500
 
 @app.errorhandler(404)

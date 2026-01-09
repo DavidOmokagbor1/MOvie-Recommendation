@@ -21,7 +21,9 @@
 
 ## 📸 Application Screenshot
 
-  <img width="3774" height="2180" alt="image" src="https://github.com/user-attachments/assets/432c0e64-447a-4fa6-83aa-21d56f3a5070" />
+  <img width="3774" height="2180" alt="Movie Recommender Application" src="https://github.com/user-attachments/assets/432c0e64-447a-4fa6-83aa-21d56f3a5070" />
+  
+  > **Note**: If the image above doesn't load, you can view the application at the live deployment URLs below.
 
   
 
@@ -63,6 +65,8 @@ The application features a modern, intuitive interface with:
 - Responsive React frontend with Semantic UI
 - Real-time search and filtering
 - Interactive movie selection and recommendation display
+- **Trending Movies Carousel** - Auto-sliding hero section with trending movies
+- **Enhanced Movie Details** - Rich movie information with cast, crew, and ratings
 - Clean, intuitive user interface
 
 ### ☁️ Production Deployment
@@ -78,8 +82,8 @@ The application features a modern, intuitive interface with:
 
 ### Frontend
 <div align="center">
-  <img src="img/react.png" alt="React" width="120" style="margin: 10px"/>
-  <img src="img/semantic_ui.png" alt="Semantic UI" width="100" style="margin: 10px"/>
+  <img src="fullstack_recsys/img/react.png" alt="React" width="120" style="margin: 10px"/>
+  <img src="fullstack_recsys/img/semantic_ui.png" alt="Semantic UI" width="100" style="margin: 10px"/>
 </div>
 
 - **React 17** - Modern UI framework
@@ -89,7 +93,7 @@ The application features a modern, intuitive interface with:
 
 ### Backend
 <div align="center">
-  <img src="img/flask.png" alt="Flask" width="120" style="margin: 10px"/>
+  <img src="fullstack_recsys/img/flask.png" alt="Flask" width="120" style="margin: 10px"/>
 </div>
 
 - **Flask 2.3.3** - Python web framework
@@ -102,8 +106,8 @@ The application features a modern, intuitive interface with:
 
 ### Machine Learning
 <div align="center">
-  <img src="img/pytorch.svg" alt="PyTorch" width="150" style="margin: 10px"/>
-  <img src="img/numpy.svg" alt="NumPy" width="150" style="margin: 10px"/>
+  <img src="fullstack_recsys/img/pytorch.svg" alt="PyTorch" width="150" style="margin: 10px"/>
+  <img src="fullstack_recsys/img/numpy.svg" alt="NumPy" width="150" style="margin: 10px"/>
 </div>
 
 - **PyTorch** - Deep learning framework for NeuralMF and DeepFM
@@ -195,10 +199,21 @@ python initialize_ml100k_db.py
 
 5. **Train ML Models** (Optional - pre-trained models included)
 ```bash
-cd api
+cd fullstack_recsys/api
 python fit_offline.py --model EASE --save_dir recommend/ckpt
 python fit_offline.py --model ItemKNN --save_dir recommend/ckpt
+python fit_offline.py --model NeuralMF --save_dir recommend/ckpt
+python fit_offline.py --model DeepFM --save_dir recommend/ckpt
 ```
+
+6. **Configure Environment Variables** (Required for production)
+```bash
+cd fullstack_recsys/backend
+cp env.example .env
+# Edit .env with your MongoDB URI, API keys, etc.
+```
+
+See [MONGODB_SETUP.md](fullstack_recsys/MONGODB_SETUP.md) and [TRENDING_SETUP.md](fullstack_recsys/TRENDING_SETUP.md) for detailed setup instructions.
 
 ### Running Locally
 
@@ -328,6 +343,16 @@ GET /api/movies/search?q=action&key=title
 GET /api/movies/{movie_id}/details
 ```
 
+**Get Trending Movies**
+```http
+GET /api/trending
+```
+
+**Health Check**
+```http
+GET /health
+```
+
 ### Recommendation Endpoints
 
 **Get Recommendations**
@@ -340,6 +365,29 @@ Content-Type: application/json
   "context": [1, 2, 3]
 }
 ```
+
+**Available Models**: `EASE`, `ItemKNN`, `NeuralMF`, `DeepFM`
+
+**Response Format**:
+```json
+{
+  "result": [
+    {
+      "id": 123,
+      "title": "Movie Title",
+      "genre": "Action",
+      "date": "2023-01-01",
+      "poster": "https://..."
+    }
+  ]
+}
+```
+
+**Error Responses**:
+- `400` - Missing or invalid input (context, model name)
+- `503` - ML API unavailable or timeout
+- `504` - ML API timeout (service may be starting up)
+- `500` - Internal server error
 
 ### Interaction Endpoints
 
@@ -412,7 +460,9 @@ This project uses the **MovieLens 100K** dataset:
 - JWT authentication
 - Password hashing with Bcrypt
 - CORS configuration
-- Input validation
+- **Comprehensive input validation** (frontend and backend)
+- **Request parameter validation** (pagination, search queries, movie IDs)
+- **Model name validation** for recommendation requests
 
 ✅ **Performance**
 - Database indexing
@@ -443,8 +493,10 @@ MOvie-Recommendation/
 │   └── react-front/      # React frontend
 │       ├── src/
 │       └── package.json
-├── img/                  # Project images and logos
-├── docs/                  # Documentation files
+├── fullstack_recsys/
+│   ├── img/              # Project images and logos
+│   └── ...               # Other documentation files
+├── docs/                  # Additional documentation files
 └── README.md
 ```
 

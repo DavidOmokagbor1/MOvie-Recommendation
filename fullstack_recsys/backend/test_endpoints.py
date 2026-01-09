@@ -196,7 +196,7 @@ def main():
         print("Testing POST /recommend endpoint...")
         recommend_data = {
             "context": [sample_movie_id],
-            "model": "EASE"
+            "model": "ItemKNN"
         }
         success, details = test_endpoint('POST', '/recommend', 200,
                                          data=recommend_data,

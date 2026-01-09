@@ -2,13 +2,22 @@
 Test MongoDB connection script
 Run this to verify your MongoDB Atlas connection is working
 """
+from dotenv import load_dotenv
+import os
+
+# Load .env file before importing config
+load_dotenv()
+
 from mongodb_client import mongodb_client
 from config import Config
 
 def test_connection():
     """Test MongoDB connection"""
     print("Testing MongoDB Atlas connection...")
-    print(f"URI: {Config.MONGODB_URI[:50]}...")  # Show first 50 chars for security
+    if Config.MONGODB_URI:
+        print(f"URI: {Config.MONGODB_URI[:50]}...")  # Show first 50 chars for security
+    else:
+        print("URI: Not set (check .env file)")
     print(f"Database: {Config.MONGODB_DB_NAME}")
     print("-" * 50)
     

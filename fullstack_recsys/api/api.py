@@ -93,6 +93,13 @@ def recommend():
                 'message': f'Model {model} is not available',
                 'available_models': valid_models
             }), 404
+        except FileNotFoundError as e:
+            logger.error(f"Checkpoint not found for model {model}: {str(e)}")
+            return jsonify({
+                'error': 'MODEL_CHECKPOINT_MISSING',
+                'message': f'Model {model} checkpoint file not found. The model needs to be trained first.',
+                'available_models': valid_models
+            }), 503
         except Exception as e:
             logger.error(f"Recommendation error: {str(e)}")
             return jsonify({
