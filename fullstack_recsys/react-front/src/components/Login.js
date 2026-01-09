@@ -24,7 +24,8 @@ class Login extends React.Component {
       currentTrendingIndex: 0,
       loadingTrending: true,
       sellingFastMovies: [],
-      loadingSellingFast: true
+      loadingSellingFast: true,
+      isLoggedIn: false
     };
   }
 

@@ -567,24 +567,26 @@
 }
 
 .login-card.logged-in {
-  position: fixed;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%) translateX(0);
-  width: 280px;
-  max-width: 280px;
-  padding: 24px 20px;
-  z-index: 9999;
+  position: fixed !important;
+  top: 50% !important;
+  right: 20px !important;
+  transform: translateY(-50%) !important;
+  width: 280px !important;
+  max-width: 280px !important;
+  padding: 24px 20px !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
   animation: slideToRight 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes slideToRight {
   0% {
+    right: calc(50% - 190px);
     transform: translateY(-50%) translateX(0);
   }
   100% {
-    transform: translateY(-50%) translateX(0);
     right: 20px;
+    transform: translateY(-50%) translateX(0);
   }
 }
 
