@@ -28,8 +28,12 @@ class MovieDetailEnhanced extends React.Component {
       selectedImage: null,
       imageModalOpen: false,
       selectedVideo: null,
-      videoModalOpen: false
+      videoModalOpen: false,
+      currentVideoIndex: 0,
+      currentContentIndex: 0
     };
+    this.videoInterval = null;
+    this.contentInterval = null;
   }
 
   formatRuntime = (minutes) => {
@@ -104,6 +108,225 @@ class MovieDetailEnhanced extends React.Component {
   closeVideoModal = () => {
     this.setState({ videoModalOpen: false, selectedVideo: null });
   };
+
+  componentDidMount() {
+    this._isMounted = true;
+    this.startVideoAutoSlide();
+    this.startContentAutoSlide();
+  }
+
+  componentWillUnmount() {
+    this._isMounted = false;
+    if (this.videoInterval) {
+      clearInterval(this.videoInterval);
+      this.videoInterval = null;
+    }
+    if (this.contentInterval) {
+      clearInterval(this.contentInterval);
+      this.contentInterval = null;
+    }
+  }
+
+  startVideoAutoSlide = () => {
+    if (this.videoInterval) {
+      clearInterval(this.videoInterval);
+    }
+    this.videoInterval = setInterval(() => {
+      if (this._isMounted) {
+        this.setState(prevState => {
+          const { enhanced } = this.props;
+          const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
+          const videos = hasEnhanced ? (enhanced.videos || []) : [];
+          const videoCount = videos.length;
+          if (videoCount === 0) return prevState;
+          return {
+            currentVideoIndex: (prevState.currentVideoIndex + 1) % videoCount
+          };
+        });
+      }
+    }, 5000);
+  }
+
+  startContentAutoSlide = () => {
+    if (this.contentInterval) {
+      clearInterval(this.contentInterval);
+    }
+    this.contentInterval = setInterval(() => {
+      if (this._isMounted) {
+        this.setState(prevState => {
+          const { enhanced } = this.props;
+          const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
+          const similar = hasEnhanced ? (enhanced.similar_movies || []) : [];
+          const recommended = hasEnhanced ? (enhanced.recommended_movies || []) : [];
+          const contentCount = Math.max(similar.length, recommended.length, 10);
+          if (contentCount === 0) return prevState;
+          return {
+            currentContentIndex: (prevState.currentContentIndex + 1) % Math.max(contentCount - 3, 1)
+          };
+        });
+      }
+    }, 4000);
+  }
+
+  renderVerticalVideoCarousel = () => {
+    const { enhanced } = this.props;
+    const { currentVideoIndex } = this.state;
+    const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
+    const videos = hasEnhanced ? (enhanced.videos || []) : [];
+    
+    if (videos.length === 0) {
+      // Create placeholder videos if none available
+      const placeholderVideos = [
+        { id: '1', name: 'Trailer', thumbnail: null, key: null },
+        { id: '2', name: 'Behind the Scenes', thumbnail: null, key: null },
+        { id: '3', name: 'Featurette', thumbnail: null, key: null }
+      ];
+      return this.renderVideoCarouselContent(placeholderVideos, currentVideoIndex);
+    }
+
+    return this.renderVideoCarouselContent(videos, currentVideoIndex);
+  }
+
+  renderVideoCarouselContent = (videos, currentIndex) => {
+    return (
+      <div className="vertical-video-carousel-container">
+        <div 
+          className="vertical-video-carousel"
+          style={{
+            transform: `translateY(-${currentIndex * 100}%)`
+          }}
+        >
+          {videos.map((video, index) => (
+            <div key={video.id || index} className="vertical-video-slide">
+              <div 
+                className="vertical-video-card"
+                onClick={() => this.openVideoModal(video)}
+              >
+                {video.thumbnail ? (
+                  <img 
+                    src={video.thumbnail} 
+                    alt={video.name || 'Video'}
+                    className="vertical-video-thumbnail"
+                  />
+                ) : (
+                  <div className="vertical-video-placeholder">
+                    <Icon name="play" size="big" />
+                    <span>{video.name || 'Video'}</span>
+                  </div>
+                )}
+                <div className="vertical-video-overlay">
+                  <div className="vertical-video-play-button">
+                    <Icon name="play" size="big" />
+                  </div>
+                  <div className="vertical-video-title">{video.name || 'Video'}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="vertical-video-indicators">
+          {videos.map((_, index) => (
+            <div
+              key={index}
+              className={`vertical-video-dot ${index === currentVideoIndex ? 'active' : ''}`}
+              onClick={() => this.setState({ currentVideoIndex: index })}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  renderContentCardsCarousel = () => {
+    const { enhanced } = this.props;
+    const { currentContentIndex } = this.state;
+    const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
+    const similar = hasEnhanced ? (enhanced.similar_movies || []) : [];
+    const recommended = hasEnhanced ? (enhanced.recommended_movies || []) : [];
+    const cast = hasEnhanced ? (enhanced.cast || []) : [];
+    
+    // Combine all content sources and create more cards
+    let allContent = [
+      ...similar.slice(0, 5).map(movie => ({
+        id: `similar-${movie.id}`,
+        title: movie.title || movie.name,
+        subtitle: movie.release_date ? new Date(movie.release_date).getFullYear() : '',
+        image: movie.poster_path,
+        type: 'movie'
+      })),
+      ...recommended.slice(0, 5).map(movie => ({
+        id: `recommended-${movie.id}`,
+        title: movie.title || movie.name,
+        subtitle: movie.release_date ? new Date(movie.release_date).getFullYear() : '',
+        image: movie.poster_path,
+        type: 'movie'
+      })),
+      ...cast.slice(0, 10).map(actor => ({
+        id: `cast-${actor.id}`,
+        title: actor.name,
+        subtitle: actor.character,
+        image: actor.profile_path,
+        type: 'cast'
+      }))
+    ];
+
+    // If we don't have enough content, create placeholder cards
+    while (allContent.length < 15) {
+      allContent.push({
+        id: `placeholder-${allContent.length}`,
+        title: `Content ${allContent.length + 1}`,
+        subtitle: 'More content coming soon',
+        image: null,
+        type: 'placeholder'
+      });
+    }
+
+    const maxIndex = Math.max(0, allContent.length - 4);
+    const cardWidth = 280 + 16; // card width + gap
+    const translateX = Math.min(currentContentIndex, maxIndex) * (cardWidth * 0.25);
+
+    return (
+      <div className="content-cards-carousel-container">
+        <div className="content-cards-header">
+          <h3>More Content</h3>
+        </div>
+        <div 
+          className="content-cards-carousel"
+          style={{
+            transform: `translateX(-${translateX}px)`
+          }}
+        >
+          {allContent.map((item, index) => (
+            <div key={item.id || index} className="content-card">
+              {item.image ? (
+                <img 
+                  src={item.image} 
+                  alt={item.title || 'Content'}
+                  className="content-card-image"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div 
+                className="content-card-placeholder"
+                style={{ display: item.image ? 'none' : 'flex' }}
+              >
+                <Icon name={item.type === 'cast' ? 'user' : 'film'} size="big" />
+              </div>
+              <div className="content-card-info">
+                <div className="content-card-title">{item.title || 'Content'}</div>
+                {item.subtitle && (
+                  <div className="content-card-subtitle">{item.subtitle}</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   renderOverview = () => {
     const { movie, enhanced } = this.props;
@@ -336,6 +559,16 @@ class MovieDetailEnhanced extends React.Component {
             </Grid.Column>
           </Grid.Row>
         </Grid>
+
+        {/* Vertical Video Carousel - Under Header */}
+        <div className="vertical-video-section">
+          {this.renderVerticalVideoCarousel()}
+        </div>
+
+        {/* Content Cards Carousel - At Bottom */}
+        <div className="content-cards-section">
+          {this.renderContentCardsCarousel()}
+        </div>
       </div>
     );
   };
