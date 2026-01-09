@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Button, Icon, Image, Label } from 'semantic-ui-react';
+import { Card, Button, Icon, Image } from 'semantic-ui-react';
 import './MovieCard.css';
 
 class MovieCard extends React.Component {

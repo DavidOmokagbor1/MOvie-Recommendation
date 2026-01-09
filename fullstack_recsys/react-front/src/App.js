@@ -2,14 +2,9 @@ import React from 'react';
 // import logo from './logo.svg';
 import './App.css';
 import config from './config';
-import CandidateTable from './components/CandidateTable'
-import ContextTable from './components/ContextTable'
-import RecommendTable from './components/RecommendTable'
-import SearchForm from './components/SearchForm'
 import Toast from './components/Toast'
 import MovieDetailEnhanced from './components/MovieDetailEnhanced'
-import MovieGrid from './components/MovieGrid'
-import { Container, Icon, Button, Grid, Modal, Header, Label, Loader, Dimmer, Segment, Dropdown, Message, Input, Divider } from "semantic-ui-react"
+import { Container, Icon, Button, Modal, Label, Loader, Dimmer, Dropdown, Message, Input } from "semantic-ui-react"
 import _ from "lodash";
 
 class App extends React.Component {
@@ -31,9 +26,13 @@ class App extends React.Component {
       loadingMovies: true,
       loadingRecommendations: false,
       loadingMovieDetails: false,
-      displayLimit: 48 // Show 48 movies at a time (multiple of 2, 3, 4, 6 for grid)
+      displayLimit: 48, // Show 48 movies at a time (multiple of 2, 3, 4, 6 for grid)
+      trendingMovies: [],
+      currentTrendingIndex: 0,
+      loadingTrending: true
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
+    this.loadTrendingMovies = this.loadTrendingMovies.bind(this);
     this.onRefreshClick = this.onRefreshClick.bind(this)
     this.onCandidateClick = this.onCandidateClick.bind(this)
     this.onSelectedClick = this.onSelectedClick.bind(this)
@@ -48,17 +47,43 @@ class App extends React.Component {
     this.toastRef = React.createRef();
 
     this.loadMovieDB();
+    this.loadTrendingMovies();
   }
 
   componentDidMount() {
     // Add keyboard shortcuts
     document.addEventListener('keydown', this.handleKeyDown);
+    // Start auto-sliding trending movies
+    this.startTrendingAutoSlide();
   }
 
   componentWillUnmount() {
     // Clean up keyboard listeners
     document.removeEventListener('keydown', this.handleKeyDown);
+    // Clear trending auto-slide interval
+    if (this.trendingInterval) {
+      clearInterval(this.trendingInterval);
+      this.trendingInterval = null;
+    }
   }
+
+  startTrendingAutoSlide = () => {
+    // Clear any existing interval
+    if (this.trendingInterval) {
+      clearInterval(this.trendingInterval);
+    }
+    // Auto-slide every 5 seconds
+    this.trendingInterval = setInterval(() => {
+      this.setState(prevState => {
+        const trendingCount = prevState.trendingMovies.length;
+        if (trendingCount === 0) return prevState;
+        return {
+          currentTrendingIndex: (prevState.currentTrendingIndex + 1) % trendingCount
+        };
+      });
+    }, 5000);
+  }
+
 
   handleKeyDown = (e) => {
     // Escape to close modal
@@ -114,6 +139,47 @@ class App extends React.Component {
             : `Failed to load movies: ${error.message || 'Unknown error'}. Please check the backend server.`;
           this.toastRef.current.show(errorMessage, 'error');
         }
+      });
+  }
+
+  loadTrendingMovies(){
+    this.setState({ loadingTrending: true });
+    const apiUrl = `${config.API_URL}/api/trending?limit=10`;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Attempting to load trending movies from: ${apiUrl}`);
+    }
+    
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Successfully loaded ${data.result?.length || 0} trending movies`);
+        }
+        this.setState({
+          trendingMovies: data.result || [],
+          loadingTrending: false,
+          currentTrendingIndex: 0
+        }, () => {
+          // Restart auto-slide if it's not already running
+          if (!this.trendingInterval && (data.result || []).length > 0) {
+            this.startTrendingAutoSlide();
+          }
+        });
+      })
+      .catch((error) => {
+        console.error('Error loading trending movies:', error);
+        this.setState({ loadingTrending: false, trendingMovies: [] });
       });
   }
 
@@ -317,7 +383,6 @@ class App extends React.Component {
     }
     
     // Use async fetch - non-blocking
-    const fetchStartTime = Date.now();
     fetch(recommendUrl, requestOptions)
       .then(response => {
         if (!response.ok) {
@@ -416,8 +481,7 @@ class App extends React.Component {
                 compact
                 options={[
                   { key: 'ease', text: 'EASE', value: 'EASE' },
-                  // ItemKNN temporarily disabled - checkpoint file missing
-                  // { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
+                  { key: 'itemknn', text: 'ItemKNN', value: 'ItemKNN' },
                   // NeuralMF and DeepFM require PyTorch - uncomment when PyTorch is installed
                   // { key: 'neuralmf', text: 'NeuralMF', value: 'NeuralMF' },
                   // { key: 'deepfm', text: 'DeepFM', value: 'DeepFM' },
@@ -498,44 +562,135 @@ class App extends React.Component {
           </div>
         </div>
 
-        {/* Main Content - 3-Column Side-by-Side Layout */}
+        {/* Trendy Video Hero Section - Top Under Header */}
+        {!this.state.loadingTrending && this.state.trendingMovies.length > 0 && (
+          <div className="trendy-hero-section">
+            <div className="trending-badge-hero">
+              <Icon name="fire" />
+              <span>TRENDING NOW</span>
+            </div>
+            <div className="trendy-hero-container">
+              {this.state.trendingMovies.map((movie, index) => {
+                const isActive = index === this.state.currentTrendingIndex;
+                const hasValidPoster = movie.poster && 
+                  typeof movie.poster === 'string' &&
+                  movie.poster.trim().length > 0 &&
+                  movie.poster !== 'null' &&
+                  movie.poster !== 'None' &&
+                  !movie.poster.includes('via.placeholder.com');
+                
+                return (
+                  <div 
+                    key={movie.id || index} 
+                    className={`trendy-hero-slide ${isActive ? 'active' : ''}`}
+                  >
+                    {hasValidPoster ? (
+                      <img 
+                        src={movie.poster} 
+                        alt={movie.title || 'Movie poster'}
+                        className="trendy-hero-image"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="trendy-hero-placeholder">
+                        <Icon name="film" size="massive" />
+                      </div>
+                    )}
+                    
+                    {/* Hero Overlay Content */}
+                    <div className="trendy-hero-overlay">
+                      <h1 className="trendy-hero-title">{movie.title || 'DECEIT'}</h1>
+                      <p className="trendy-hero-subtitle">{movie.genre || 'A female undercover cop is used as a sexual lure for a suspected killer'}</p>
+                      
+                      <div className="trendy-hero-metadata">
+                        <span>16+</span>
+                        <span>•</span>
+                        <span>CC</span>
+                        <span>•</span>
+                        <span>Serie</span>
+                        <span>•</span>
+                        <span>{movie.date ? new Date(movie.date).getFullYear() : '2026'}</span>
+                        <span>•</span>
+                        <span>1 season</span>
+                      </div>
+                      
+                      <div className="trendy-hero-buttons">
+                        <Button className="trendy-hero-play-btn">
+                          <Icon name="play" />
+                          Play
+                        </Button>
+                        <Button className="trendy-hero-download-btn">
+                          <Icon name="download" />
+                          Download
+                        </Button>
+                        <Button className="trendy-hero-favorite-btn" icon>
+                          <Icon name="star" />
+                        </Button>
+                      </div>
+                      
+                      <div className="trendy-hero-tabs">
+                        <div className="trendy-hero-tab active">SEASON 1</div>
+                        <div className="trendy-hero-tab">CAST & CREW</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Bottom Indicators */}
+            <div className="trendy-hero-indicators">
+              {this.state.trendingMovies.map((_, index) => (
+                <div
+                  key={index}
+                  className={`trendy-hero-dot ${index === this.state.currentTrendingIndex ? 'active' : ''}`}
+                  onClick={() => this.setState({ currentTrendingIndex: index })}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Content - Horizontal Scrollable Sections */}
         <Container className="main-container" style={{ padding: '40px 20px', maxWidth: '1800px' }}>
           {this.state.loadingMovies ? (
             <Dimmer active inverted>
               <Loader size="large">Loading Movies...</Loader>
             </Dimmer>
           ) : (
-            <div className="three-column-layout">
-              {/* Column 1: Available Movies */}
-              <div className="column available-column">
-                <div className="movies-section available-section">
-                  <div className="section-header-modern">
-                    <Icon name="film" size="large" />
-                    <div>
-                      <h2>Available Movies</h2>
-                      <p className="section-subtitle">{this.state.candidatesShow.length} movies available</p>
-                    </div>
+            <div className="horizontal-sections-layout">
+              {/* Section 1: Available Movies */}
+              <div className="horizontal-section available-section">
+                <div className="section-header-horizontal">
+                  <Icon name="film" size="large" />
+                  <div>
+                    <h2>Available Movies</h2>
+                    <p className="section-subtitle">{this.state.candidatesShow.length} movies available</p>
                   </div>
-                  {this.state.candidatesShow.length > 0 ? (
-                    <div className="movies-grid scrollable-grid">
+                </div>
+                {this.state.candidatesShow.length > 0 ? (
+                  <div className="horizontal-movies-scroll">
+                    <div className="horizontal-movies-container">
                       {this.state.candidatesShow.slice(0, this.state.displayLimit).map(movie => {
                         const isSelected = this.state.selected.some(m => m.id === movie.id);
                         return (
-                          <div key={movie.id} className={`movie-card-modern ${isSelected ? 'selected' : ''}`}>
-                            <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                          <div key={movie.id} className={`movie-card-horizontal ${isSelected ? 'selected' : ''}`}>
+                            <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
                               {movie.poster ? (
                                 <img src={movie.poster} alt={movie.title} />
                               ) : (
-                                <div className="poster-placeholder-modern">
+                                <div className="poster-placeholder-horizontal">
                                   <Icon name="film" size="big" />
                                 </div>
                               )}
-                              <div className="movie-overlay">
+                              <div className="movie-overlay-horizontal">
                                 <Button 
                                   icon 
                                   circular 
-                                  size="large"
-                                  className={isSelected ? "remove-btn" : "add-btn"}
+                                  size="small"
+                                  className={isSelected ? "remove-btn-horizontal" : "add-btn-horizontal"}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     this.onCandidateClick(movie);
@@ -545,64 +700,64 @@ class App extends React.Component {
                                 </Button>
                               </div>
                             </div>
-                            <div className="movie-info-modern">
+                            <div className="movie-info-horizontal">
                               <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
                               <p>{movie.genre} • {movie.date}</p>
                             </div>
                           </div>
                         );
                       })}
-                      {this.state.candidatesShow.length > this.state.displayLimit && (
-                        <div className="load-more-container">
-                          <Button 
-                            basic 
-                            inverted 
-                            color="blue" 
-                            onClick={this.loadMore}
-                            className="load-more-btn"
-                          >
-                            Load More Movies ({this.state.candidatesShow.length - this.state.displayLimit} remaining)
-                          </Button>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No movies found</Message.Header>
-                      <p>Try adjusting your search criteria or click the logo to refresh.</p>
-                    </Message>
-                  )}
-                </div>
+                    {this.state.candidatesShow.length > this.state.displayLimit && (
+                      <div className="load-more-horizontal">
+                        <Button 
+                          basic 
+                          inverted 
+                          color="blue" 
+                          onClick={this.loadMore}
+                          className="load-more-btn"
+                        >
+                          Load More ({this.state.candidatesShow.length - this.state.displayLimit} remaining)
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Message info className="empty-message-horizontal">
+                    <Message.Header>No movies found</Message.Header>
+                    <p>Try adjusting your search criteria or click the logo to refresh.</p>
+                  </Message>
+                )}
               </div>
 
-              {/* Column 2: Selected Movies */}
-              <div className="column selected-column">
-                <div className="movies-section selected-section">
-                  <div className="section-header-modern">
-                    <Icon name="heart" color="red" size="large" />
-                    <div>
-                      <h2>Selected Movies</h2>
-                      <p className="section-subtitle">{this.state.selected.length} selected</p>
-                    </div>
+              {/* Section 2: Selected Movies */}
+              <div className="horizontal-section selected-section">
+                <div className="section-header-horizontal">
+                  <Icon name="heart" color="red" size="large" />
+                  <div>
+                    <h2>Selected Movies</h2>
+                    <p className="section-subtitle">{this.state.selected.length} selected</p>
                   </div>
-                  {this.state.selected.length > 0 ? (
-                    <div className="movies-grid compact-grid scrollable-grid">
+                </div>
+                {this.state.selected.length > 0 ? (
+                  <div className="horizontal-movies-scroll">
+                    <div className="horizontal-movies-container">
                       {this.state.selected.map(movie => (
-                        <div key={movie.id} className="movie-card-modern compact">
-                          <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
+                        <div key={movie.id} className="movie-card-horizontal selected-card">
+                          <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
                             {movie.poster ? (
                               <img src={movie.poster} alt={movie.title} />
                             ) : (
-                              <div className="poster-placeholder-modern">
+                              <div className="poster-placeholder-horizontal">
                                 <Icon name="film" />
                               </div>
                             )}
-                            <div className="movie-overlay">
+                            <div className="movie-overlay-horizontal">
                               <Button 
                                 icon 
                                 circular 
                                 size="small"
-                                className="remove-btn"
+                                className="remove-btn-horizontal"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   this.onSelectedClick(movie);
@@ -612,74 +767,74 @@ class App extends React.Component {
                               </Button>
                             </div>
                           </div>
-                          <div className="movie-info-modern">
-                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
-                            <p>{movie.genre}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No Movies Selected</Message.Header>
-                      <p>Click the <Icon name="plus" /> button on movies to add them here.</p>
-                    </Message>
-                  )}
-                </div>
-              </div>
-
-              {/* Column 3: Recommendations */}
-              <div className="column recommendations-column">
-                <div className="movies-section recommendations-section">
-                  <div className="section-header-modern">
-                    <Icon name="fire" color={this.state.recommended.length > 0 ? "red" : "grey"} size="large" />
-                    <div>
-                      <h2>Recommendations</h2>
-                      <p className="section-subtitle">
-                        {this.state.loadingRecommendations 
-                          ? 'Loading...' 
-                          : this.state.recommended.length > 0 
-                            ? `${this.state.recommended.length} found using ${this.state.modelKey}`
-                            : this.state.selected.length > 0
-                              ? 'Click RECOMMEND to get suggestions'
-                              : 'Select movies first'}
-                      </p>
-                    </div>
-                  </div>
-                  {this.state.loadingRecommendations ? (
-                    <Dimmer active inverted>
-                      <Loader size="large">Loading Recommendations...</Loader>
-                    </Dimmer>
-                  ) : this.state.recommended.length > 0 ? (
-                    <div className="movies-grid compact-grid scrollable-grid">
-                      {this.state.recommended.map(movie => (
-                        <div key={movie.id} className="movie-card-modern compact recommended">
-                          <div className="movie-poster-modern" onClick={() => this.onMovieClick(movie)}>
-                            {movie.poster ? (
-                              <img src={movie.poster} alt={movie.title} />
-                            ) : (
-                              <div className="poster-placeholder-modern">
-                                <Icon name="film" />
-                              </div>
-                            )}
-                            <div className="recommendation-badge">
-                              <Icon name="fire" color="red" />
-                            </div>
-                          </div>
-                          <div className="movie-info-modern">
-                            <h4 onClick={() => this.onMovieClick(movie)}>{movie.title}</h4>
+                          <div className="movie-info-horizontal">
+                            <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
                             <p>{movie.genre} • {movie.date}</p>
                           </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <Message info className="empty-message-modern">
-                      <Message.Header>No Recommendations Yet</Message.Header>
-                      <p>Select movies and click RECOMMEND to get personalized recommendations!</p>
-                    </Message>
-                  )}
+                  </div>
+                ) : (
+                  <Message info className="empty-message-horizontal">
+                    <Message.Header>No Movies Selected</Message.Header>
+                    <p>Click the <Icon name="plus" /> button on movies to add them here.</p>
+                  </Message>
+                )}
+              </div>
+
+              {/* Section 3: Recommendations */}
+              <div className="horizontal-section recommendations-section">
+                <div className="section-header-horizontal">
+                  <Icon name="fire" color={this.state.recommended.length > 0 ? "red" : "grey"} size="large" />
+                  <div>
+                    <h2>Recommendations</h2>
+                    <p className="section-subtitle">
+                      {this.state.loadingRecommendations 
+                        ? 'Loading...' 
+                        : this.state.recommended.length > 0 
+                          ? `${this.state.recommended.length} found using ${this.state.modelKey}`
+                          : this.state.selected.length > 0
+                            ? 'Click RECOMMEND to get suggestions'
+                            : 'Select movies first'}
+                    </p>
+                  </div>
                 </div>
+                {this.state.loadingRecommendations ? (
+                  <Dimmer active inverted>
+                    <Loader size="large">Loading Recommendations...</Loader>
+                  </Dimmer>
+                ) : this.state.recommended.length > 0 ? (
+                  <div className="horizontal-movies-scroll">
+                    <div className="horizontal-movies-container">
+                      {this.state.recommended.map(movie => (
+                        <div key={movie.id} className="movie-card-horizontal recommended-card">
+                          <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
+                            {movie.poster ? (
+                              <img src={movie.poster} alt={movie.title} />
+                            ) : (
+                              <div className="poster-placeholder-horizontal">
+                                <Icon name="film" />
+                              </div>
+                            )}
+                            <div className="recommendation-badge-horizontal">
+                              <Icon name="fire" color="red" />
+                            </div>
+                          </div>
+                          <div className="movie-info-horizontal">
+                            <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
+                            <p>{movie.genre} • {movie.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Message info className="empty-message-horizontal">
+                    <Message.Header>No Recommendations Yet</Message.Header>
+                    <p>Select movies and click RECOMMEND to get personalized recommendations!</p>
+                  </Message>
+                )}
               </div>
             </div>
           )}

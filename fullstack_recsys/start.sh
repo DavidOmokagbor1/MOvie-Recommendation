@@ -46,6 +46,7 @@ echo -e "  ✅ Backend Server started (PID: $BACKEND_PID)"
 # Start Frontend
 echo -e "${GREEN}Starting Frontend (Port 5052)...${NC}"
 cd react-front
+export PORT=5052
 npm start > /tmp/movie_recsys_frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..

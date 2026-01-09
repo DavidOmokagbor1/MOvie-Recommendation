@@ -228,7 +228,7 @@ class MovieDetailEnhanced extends React.Component {
           {videos.map((_, index) => (
             <div
               key={index}
-              className={`vertical-video-dot ${index === currentVideoIndex ? 'active' : ''}`}
+              className={`vertical-video-dot ${index === currentIndex ? 'active' : ''}`}
               onClick={() => this.setState({ currentVideoIndex: index })}
             />
           ))}
@@ -333,24 +333,16 @@ class MovieDetailEnhanced extends React.Component {
     const { userScore, userVibe, isLiked, isBookmarked } = this.state;
     const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
     
-    const backdropUrl = hasEnhanced && enhanced.backdrop_path;
     const posterUrl = movie.poster || (hasEnhanced && enhanced.poster_path);
     const genres = hasEnhanced && enhanced.genres ? enhanced.genres : 
                   (movie.genre ? movie.genre.split(',').map(g => g.trim()) : []);
-    const cast = hasEnhanced ? (enhanced.cast || []) : [];
     const directors = hasEnhanced ? (enhanced.directors || []) : [];
     const writers = hasEnhanced ? (enhanced.writers || []) : [];
     const overview = hasEnhanced ? enhanced.overview : '';
     const tagline = hasEnhanced ? enhanced.tagline : '';
     const runtime = hasEnhanced ? enhanced.runtime : null;
-    const budget = hasEnhanced ? enhanced.budget : null;
-    const revenue = hasEnhanced ? enhanced.revenue : null;
     const certification = hasEnhanced ? enhanced.certification : '';
-    const voteAverage = hasEnhanced ? enhanced.vote_average : null;
-    const voteCount = hasEnhanced ? enhanced.vote_count : null;
     const releaseDate = hasEnhanced ? enhanced.release_date : movie.date;
-    const status = hasEnhanced ? enhanced.status : '';
-    const originalLanguage = hasEnhanced ? enhanced.original_language : '';
     const trailerUrl = hasEnhanced ? enhanced.trailer_url : null;
     const homepage = hasEnhanced ? enhanced.homepage : null;
     const imdbId = hasEnhanced ? enhanced.imdb_id : null;
@@ -1001,7 +993,7 @@ class MovieDetailEnhanced extends React.Component {
   };
 
   renderDetails = () => {
-    const { movie, enhanced } = this.props;
+    const { enhanced } = this.props;
     const hasEnhanced = enhanced && Object.keys(enhanced).length > 0;
 
     if (!hasEnhanced) {
