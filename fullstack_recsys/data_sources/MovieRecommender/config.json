@@ -1,0 +1,10 @@
+{
+    "name": "MovieRecommender",
+    "type": "mongodb-atlas",
+    "config": {
+        "clusterName": "MovieRecommender",
+        "readPreference": "primary",
+        "wireProtocolEnabled": false
+    },
+    "version": 1
+}
