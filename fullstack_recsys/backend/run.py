@@ -770,6 +770,104 @@ def login():
 			'error': 'INTERNAL_ERROR'
 		}), 500
 
+@app.route('/api/auth/demo', methods=['POST', 'OPTIONS'])
+def demo_login():
+	"""Demo login - creates or uses a demo user account"""
+	if request.method == 'OPTIONS':
+		return '', 200
+	
+	try:
+		is_mongo = use_mongodb()
+		demo_username = 'demo_user'
+		demo_password = 'demo123'
+		user = None
+		user_id = None
+		
+		if is_mongo:
+			from mongodb_client import mongodb_client
+			mongodb = mongodb_client.get_database()
+			if mongodb is not None:
+				users_collection = mongodb['users']
+				# Check if demo user exists
+				user_doc = users_collection.find_one({'username': demo_username})
+				
+				if not user_doc:
+					# Create demo user if it doesn't exist
+					user_doc = {
+						'username': demo_username,
+						'email': 'demo@example.com',
+						'password_hash': flask_bcrypt.generate_password_hash(demo_password).decode('utf-8'),
+						'age': -1,
+						'gender': '-',
+						'created_at': datetime.utcnow(),
+						'is_active': True
+					}
+					result = users_collection.insert_one(user_doc)
+					user_id = str(result.inserted_id)
+					user = {
+						'id': user_id,
+						'username': demo_username,
+						'email': 'demo@example.com',
+						'age': -1,
+						'gender': '-'
+					}
+				else:
+					# Use existing demo user
+					user_id = str(user_doc['_id'])
+					user = {
+						'id': user_id,
+						'username': user_doc.get('username'),
+						'email': user_doc.get('email', 'demo@example.com'),
+						'age': user_doc.get('age', -1),
+						'gender': user_doc.get('gender', '-')
+					}
+		else:
+			# SQLite fallback
+			user_obj = User.query.filter_by(username=demo_username).first()
+			if not user_obj:
+				# Create demo user if it doesn't exist
+				user_obj = User(
+					username=demo_username,
+					email='demo@example.com',
+					age=-1,
+					gender='-'
+				)
+				user_obj.set_password(demo_password)
+				db.session.add(user_obj)
+				db.session.commit()
+			
+			user_id = user_obj.id
+			user = user_obj.to_dict()
+		
+		if not user:
+			return jsonify({
+				'message': 'Failed to create or access demo user',
+				'error': 'DEMO_USER_ERROR'
+			}), 500
+		
+		token = jwt.encode(
+			{'user_id': str(user_id), 'username': demo_username},
+			app.config['SECRET_KEY'],
+			algorithm='HS256'
+		)
+		
+		return jsonify({
+			'message': 'Demo login successful',
+			'result': {
+				'token': token,
+				'user': user
+			}
+		}), 200
+		
+	except Exception as e:
+		logger.error(f"Demo login error: {str(e)}")
+		if db.session:
+			db.session.rollback()
+		return jsonify({
+			'message': 'Failed to login with demo account',
+			'error': 'INTERNAL_ERROR'
+		}), 500
+
 @app.route('/api/auth/user', methods=['GET', 'OPTIONS'])
 def get_current_user():
 	"""Get current authenticated user"""

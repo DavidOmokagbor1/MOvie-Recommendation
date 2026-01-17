@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
@@ -72,3 +72,19 @@ try:
 except Exception as e:
     logger.warning(f"MongoDB initialization deferred: {e}")
     # App can still start without MongoDB, will use SQLite fallback
+
+# Ensure CORS headers are always added, even for error responses
+@app.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    # Flask-CORS should handle this, but ensure headers are always present
+    origin = request.headers.get('Origin')
+    if origin:
+        response.headers.add('Access-Control-Allow-Origin', origin)
+    else:
+        response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+    response.headers.add('Access-Control-Expose-Headers', 'Content-Type, Content-Length, Authorization')
+    response.headers.add('Access-Control-Max-Age', '3600')
+    return response
