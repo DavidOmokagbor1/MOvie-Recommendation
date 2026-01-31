@@ -26,6 +26,21 @@ if ML_API_BASE.endswith('%s'):
 else:
     API_ADDRESS = f"{ML_API_BASE}%s"
 
+@app.route('/', methods=['GET'])
+def index():
+	"""Root endpoint - API info and health"""
+	return jsonify({
+		'service': 'Movie Recommender API',
+		'status': 'running',
+		'endpoints': {
+			'health': '/health',
+			'movies': '/api/movies',
+			'recommend': '/recommend (POST)',
+			'trending': '/api/trending',
+		},
+		'timestamp': datetime.utcnow().isoformat()
+	}), 200
+
 @app.route('/recommend', methods=['POST', 'OPTIONS'])
 def recommend():
 	"""Get movie recommendations"""
