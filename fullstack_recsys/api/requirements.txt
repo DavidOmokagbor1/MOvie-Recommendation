@@ -1,4 +1,8 @@
 # ML API Requirements
+# Build tools first (required for Cloud Build / buildpacks)
+setuptools>=65.0.0
+wheel>=0.38.0
+pip>=23.0.0
 # Core dependencies (required)
 Flask==2.3.3
 Flask-Cors==4.0.0

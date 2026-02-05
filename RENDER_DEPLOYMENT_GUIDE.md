@@ -87,12 +87,13 @@ VERCEL_URL=your-vercel-app-url.vercel.app
 - **Runtime**: `Python 3`
 - **Build Command**: 
   ```bash
-  pip install --upgrade pip setuptools wheel && pip install -r ../backend/requirements.txt
+  pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
   ```
 - **Start Command**: 
   ```bash
-  python api.py
+  gunicorn api:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
   ```
+  (Or `python api.py` if you set PORT in env; Render sets $PORT automatically.)
 
 **Instance:**
 - **Instance Type**: `Free` (512 MB RAM)

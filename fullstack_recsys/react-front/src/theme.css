@@ -1,0 +1,62 @@
+/**
+ * Apple TV–style theme – CSS custom properties from design system.
+ * Use these in Hero, Rail, FocusableCard and all new components.
+ */
+
+:root {
+  /* Colors */
+  --color-bg: #0a0e1a;
+  --color-surface: rgba(26, 31, 46, 0.9);
+  --color-text: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.75);
+  --color-accent: #0A84FF;
+  --color-focus-ring: #0A84FF;
+
+  /* Typography */
+  --font-heading: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  --font-size-hero: 32px;
+  --font-size-section: 20px;
+  --font-size-card: 14px;
+  --font-size-body: 16px;
+  --font-weight-bold: 700;
+  --font-weight-medium: 500;
+
+  /* Spacing */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+
+  /* Layout */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --shadow-focus: 0 0 0 3px var(--color-focus-ring);
+  --blur-glass: 20px;
+  --blur-glass-strong: 24px;
+
+  /* Motion */
+  --transition-focus: 200ms ease;
+  --transition-modal: 300ms ease;
+  --scale-focus: 1.05;
+}
+
+/* Global focus visible - use design system ring */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: shorter transitions */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-focus: 80ms ease;
+    --transition-modal: 150ms ease;
+    --scale-focus: 1.02;
+  }
+}

@@ -1,0 +1,87 @@
+.rail {
+  margin-bottom: var(--space-32);
+}
+
+.rail__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-12);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-16);
+}
+
+.rail__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+}
+
+.rail__count {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.rail__load-more-wrap {
+  margin-top: var(--space-16);
+}
+
+.rail__load-more {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-button);
+  padding: var(--space-8) var(--space-24);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.rail__load-more:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.rail__load-more:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.rail__scroll {
+  display: flex;
+  gap: var(--space-16);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--space-8) 0;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rail__scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.rail__scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.rail__scroll::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 4px;
+}
+
+.rail__item {
+  flex: 0 0 auto;
+}
+
+.rail__empty {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-card);
+  padding: var(--space-24);
+  margin: 0;
+}

@@ -196,8 +196,13 @@ def get_movie_details_from_tmdb(movie_id):
             for v in videos if v.get('site') == 'YouTube'
         ]
         
-        # Get trailer (first trailer found)
-        trailer = next((v for v in videos if v.get('type') == 'Trailer' and v.get('site') == 'YouTube'), None)
+        # Get trailer: prefer Trailer, then Teaser, then first YouTube video
+        youtube_videos = [v for v in videos if v.get('site') == 'YouTube']
+        trailer = next((v for v in youtube_videos if v.get('type') == 'Trailer'), None)
+        if not trailer:
+            trailer = next((v for v in youtube_videos if v.get('type') == 'Teaser'), None)
+        if not trailer:
+            trailer = youtube_videos[0] if youtube_videos else None
         if trailer:
             result['trailer_key'] = trailer.get('key')
             result['trailer_url'] = f"https://www.youtube.com/watch?v={trailer.get('key')}"

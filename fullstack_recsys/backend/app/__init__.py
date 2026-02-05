@@ -7,8 +7,9 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_cors import CORS
 
-# Load environment variables from .env file before importing Config
-load_dotenv()
+# Load .env from backend directory so it's found even when CWD is project root
+_backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv(os.path.join(_backend_dir, '.env'))
 
 from config import Config, BASE_DIR
 from mongodb_client import mongodb_client, init_mongodb

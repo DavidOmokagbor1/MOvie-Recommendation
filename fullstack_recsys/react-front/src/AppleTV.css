@@ -1,0 +1,211 @@
+/**
+ * Apple TV (tv.apple.com) layout prototype
+ * Dark, minimal header; full-bleed hero; clean rails.
+ */
+
+/* ---- Page ---- */
+.App.apple-tv-layout {
+  background: #000;
+  min-height: 100vh;
+}
+.App.apple-tv-layout::before {
+  display: none;
+}
+
+/* ---- Header: minimal, dark, like Apple TV ---- */
+.App.apple-tv-layout .modern-header {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 32px;
+  box-shadow: none;
+}
+.App.apple-tv-layout .header-logo {
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+}
+.App.apple-tv-layout .header-logo:hover {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.App.apple-tv-layout .logo-text {
+  font-size: 1.35rem;
+  font-weight: 600;
+  background: none;
+  -webkit-text-fill-color: #fff;
+  color: #fff;
+}
+.App.apple-tv-layout .logo-icon {
+  color: #fff !important;
+  filter: none;
+}
+.App.apple-tv-layout .app-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+  background: none;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: none;
+}
+.App.apple-tv-layout .recommendation-controls {
+  background: transparent;
+  border: none;
+  flex-direction: row;
+  padding: 0;
+  gap: 16px;
+}
+.App.apple-tv-layout .recommend-btn {
+  background: #0A84FF !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+  font-size: 0.875rem !important;
+  padding: 8px 16px !important;
+}
+.App.apple-tv-layout .model-selector .ui.dropdown {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ---- Search: compact bar like Apple TV ---- */
+.App.apple-tv-layout .search-container {
+  background: transparent;
+  padding: 12px 32px 16px;
+  border: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.App.apple-tv-layout .search-wrapper {
+  max-width: 420px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+.App.apple-tv-layout .search-input input {
+  background: transparent !important;
+  color: #fff !important;
+  border: none !important;
+}
+.App.apple-tv-layout .search-input input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.App.apple-tv-layout .search-button {
+  background: transparent !important;
+  color: #0A84FF;
+  border: none;
+}
+.App.apple-tv-layout .search-select .ui.dropdown {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ---- Trending video (auto slide) section ---- */
+.App.apple-tv-layout .trending-video-section {
+  margin-bottom: 0;
+}
+.App.apple-tv-layout .trending-video-title {
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  padding: 28px 48px 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.App.apple-tv-layout .hero-dots {
+  bottom: 28px;
+}
+.App.apple-tv-layout .hero-dot {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.App.apple-tv-layout .hero-dot--active {
+  background: #fff;
+}
+
+/* ---- Hero: prototype size (~65% viewport), full picture visible, contain (no shrink) ---- */
+.App.apple-tv-layout .trending-video-section .hero {
+  min-height: 68vh;
+  max-height: 68vh;
+}
+.App.apple-tv-layout .hero {
+  min-height: 420px;
+  max-height: 55vh;
+}
+.App.apple-tv-layout .hero__overlay {
+  background: linear-gradient(to top, #000 0%, transparent 40%, rgba(0, 0, 0, 0.2) 100%);
+}
+.App.apple-tv-layout .hero__content {
+  padding: 40px 48px 48px;
+}
+.App.apple-tv-layout .hero__title {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.App.apple-tv-layout .hero__subtitle,
+.App.apple-tv-layout .hero__meta {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+.App.apple-tv-layout .hero__cta {
+  background: #0A84FF;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  padding: 10px 20px;
+}
+
+/* ---- Main: rails spacing like Apple TV ---- */
+.App.apple-tv-layout .main-container {
+  padding: 32px 48px 48px !important;
+  max-width: 100% !important;
+}
+.App.apple-tv-layout .rail {
+  margin-bottom: 40px;
+}
+.App.apple-tv-layout .rail__title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 12px;
+  letter-spacing: -0.3px;
+}
+.App.apple-tv-layout .rail__scroll {
+  gap: 12px;
+  padding: 4px 0;
+}
+.App.apple-tv-layout .focusable-card {
+  width: 180px;
+}
+.App.apple-tv-layout .focusable-card__label {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 6px;
+}
+
+/* ---- Footer ---- */
+.App.apple-tv-layout .modern-footer {
+  background: #000;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 24px;
+}
+.App.apple-tv-layout .modern-footer p {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8125rem;
+}
+
+/* ---- Modal ---- */
+.App.apple-tv-layout .movie-detail-modal {
+  background: rgba(0, 0, 0, 0.92) !important;
+}
+.App.apple-tv-layout .movie-detail-modal .ui.modal {
+  background: #0a0a0a !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}

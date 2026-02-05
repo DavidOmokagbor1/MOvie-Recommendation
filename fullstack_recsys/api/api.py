@@ -14,6 +14,19 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
+@app.route("/", methods=['GET'])
+def root():
+    """Root endpoint - API info and links to real endpoints"""
+    return jsonify({
+        'service': 'Movie Recommender ML API',
+        'status': 'running',
+        'endpoints': {
+            'health': '/api/health',
+            'models': '/api/models',
+            'recommend': '/api/recommend (POST)'
+        }
+    }), 200
+
 @app.route("/api/recommend", methods=['POST'])
 def recommend():
     """Get recommendations using specified model"""

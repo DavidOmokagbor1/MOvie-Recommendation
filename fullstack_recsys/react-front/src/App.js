@@ -1,10 +1,14 @@
 import React from 'react';
 // import logo from './logo.svg';
 import './App.css';
+import './AppleTV.css';
 import config from './config';
-import Toast from './components/Toast'
-import MovieDetailEnhanced from './components/MovieDetailEnhanced'
-import { Container, Icon, Button, Modal, Label, Loader, Dimmer, Dropdown, Message, Input } from "semantic-ui-react"
+import { TRENDING_SLIDE_INTERVAL_MS } from './constants/heroTiming';
+import Toast from './components/Toast';
+import MovieDetailEnhanced from './components/MovieDetailEnhanced';
+import Hero from './components/Hero';
+import Rail from './components/Rail';
+import { Icon, Button, Modal, Label, Loader, Dimmer, Dropdown, Input } from "semantic-ui-react";
 import _ from "lodash";
 
 class App extends React.Component {
@@ -29,7 +33,9 @@ class App extends React.Component {
       displayLimit: 48, // Show 48 movies at a time (multiple of 2, 3, 4, 6 for grid)
       trendingMovies: [],
       currentTrendingIndex: 0,
-      loadingTrending: true
+      loadingTrending: true,
+      currentTrendingTrailerKey: null,
+      trendingLoadError: null
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.loadTrendingMovies = this.loadTrendingMovies.bind(this);
@@ -45,17 +51,56 @@ class App extends React.Component {
     this.closeModal = this.closeModal.bind(this)
     this.loadMore = this.loadMore.bind(this)
     this.toastRef = React.createRef();
+    this.lastFocusedBeforeModal = null;
 
     this.loadMovieDB();
     this.loadTrendingMovies();
   }
 
   componentDidMount() {
-    // Add keyboard shortcuts
     document.addEventListener('keydown', this.handleKeyDown);
-    // Start auto-sliding trending movies
     this.startTrendingAutoSlide();
+    this.fetchTrendingTrailerIfNeeded();
   }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.currentTrendingIndex !== this.state.currentTrendingIndex ||
+        (prevState.trendingMovies.length === 0 && this.state.trendingMovies.length > 0)) {
+      this.fetchTrendingTrailerIfNeeded();
+    }
+  }
+
+  fetchTrendingTrailerIfNeeded = () => {
+    const { trendingMovies, currentTrendingIndex } = this.state;
+    if (!trendingMovies.length) return;
+    const movie = trendingMovies[currentTrendingIndex] || trendingMovies[0];
+    if (!movie || !movie.id) return;
+    this.fetchTrendingTrailer(movie.id);
+  };
+
+  fetchTrendingTrailer = async (movieId) => {
+    this.setState({ currentTrendingTrailerKey: null });
+    try {
+      const response = await fetch(`${config.API_URL}/api/movies/${movieId}/details`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      let key = data.result?.enhanced?.trailer_key || null;
+      if (!key && data.result?.enhanced?.trailer_url) {
+        const m = (data.result.enhanced.trailer_url || '').match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
+        if (m) key = m[1];
+      }
+      this.setState((prev) => {
+        const current = prev.trendingMovies[prev.currentTrendingIndex];
+        if (!current || String(current.id) !== String(movieId)) return null;
+        return { currentTrendingTrailerKey: key };
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.warn('Trending trailer fetch failed:', err);
+    }
+  };
 
   componentWillUnmount() {
     // Clean up keyboard listeners
@@ -68,11 +113,9 @@ class App extends React.Component {
   }
 
   startTrendingAutoSlide = () => {
-    // Clear any existing interval
     if (this.trendingInterval) {
       clearInterval(this.trendingInterval);
     }
-    // Auto-slide every 5 seconds
     this.trendingInterval = setInterval(() => {
       this.setState(prevState => {
         const trendingCount = prevState.trendingMovies.length;
@@ -81,19 +124,40 @@ class App extends React.Component {
           currentTrendingIndex: (prevState.currentTrendingIndex + 1) % trendingCount
         };
       });
-    }, 5000);
+    }, TRENDING_SLIDE_INTERVAL_MS);
   }
 
-
   handleKeyDown = (e) => {
-    // Escape to close modal
     if (e.key === 'Escape' && this.state.modalOpen) {
       this.closeModal();
     }
-    // Enter to search (when search input is focused)
     if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.placeholder === 'Search...') {
       const searchValue = e.target.value;
       this.onSearchClick(this.state.searchKey, searchValue);
+    }
+    // Arrow keys in trending section: previous/next slide
+    const inTrending = e.target.closest && e.target.closest('.trending-video-section');
+    if (inTrending && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      const n = this.state.trendingMovies.length;
+      if (n > 0) {
+        e.preventDefault();
+        this.setState(prev => ({
+          currentTrendingIndex: e.key === 'ArrowRight'
+            ? (prev.currentTrendingIndex + 1) % n
+            : (prev.currentTrendingIndex - 1 + n) % n
+        }));
+      }
+    }
+    // Arrow keys: move focus within a rail
+    const rail = e.target.closest && e.target.closest('[data-rail-id]');
+    if (rail && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      const focusables = rail.querySelectorAll('.focusable-card[tabindex="0"]');
+      const idx = Array.from(focusables).indexOf(e.target);
+      if (idx >= 0) {
+        e.preventDefault();
+        const next = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+        if (next >= 0 && next < focusables.length) focusables[next].focus();
+      }
     }
   }
 
@@ -143,7 +207,7 @@ class App extends React.Component {
   }
 
   loadTrendingMovies(){
-    this.setState({ loadingTrending: true });
+    this.setState({ loadingTrending: true, trendingLoadError: null });
     const apiUrl = `${config.API_URL}/api/trending?limit=10`;
     
     if (process.env.NODE_ENV === 'development') {
@@ -179,7 +243,7 @@ class App extends React.Component {
       })
       .catch((error) => {
         console.error('Error loading trending movies:', error);
-        this.setState({ loadingTrending: false, trendingMovies: [] });
+        this.setState({ loadingTrending: false, trendingMovies: [], trendingLoadError: error });
       });
   }
 
@@ -255,6 +319,32 @@ class App extends React.Component {
     }));
   }
 
+  /** Fetch movie details and open trailer in new tab if available */
+  openTrailerForMovie = async (item) => {
+    if (!item || !item.id) return;
+    try {
+      const response = await fetch(`${config.API_URL}/api/movies/${item.id}/details`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      const key = data.result?.enhanced?.trailer_key;
+      const url = data.result?.enhanced?.trailer_url;
+      if (key) {
+        window.open(`https://www.youtube.com/watch?v=${key}`, '_blank', 'noopener,noreferrer');
+      } else if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else if (this.toastRef.current) {
+        this.toastRef.current.show(`No trailer available for ${item.title || 'this movie'}`, 'info');
+      }
+    } catch (err) {
+      if (this.toastRef.current) {
+        this.toastRef.current.show('Could not load trailer.', 'error');
+      }
+    }
+  }
+
   onModelSelectClick(e, data){
     const newModel = data.value;
     const oldModel = this.state.modelKey;
@@ -283,13 +373,14 @@ class App extends React.Component {
   }
 
   onMovieClick(movie){
+    this.lastFocusedBeforeModal = document.activeElement;
     this.setState({
       selectedMovie: movie,
       selectedMovieDetails: null,
       modalOpen: true,
       loadingMovieDetails: true
     })
-    
+
     // Fetch enhanced movie details
     this.fetchMovieDetails(movie.id)
   }
@@ -340,6 +431,10 @@ class App extends React.Component {
       selectedMovie: null,
       selectedMovieDetails: null,
       loadingMovieDetails: false
+    }, () => {
+      if (this.lastFocusedBeforeModal && typeof this.lastFocusedBeforeModal.focus === 'function') {
+        this.lastFocusedBeforeModal.focus();
+      }
     })
   }
   
@@ -459,9 +554,10 @@ class App extends React.Component {
 
   render(){
     return (
-      <div className="App">
+      <div className="App apple-tv-layout">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         <Toast ref={this.toastRef} />
-        <header className="modern-header">
+        <header className="modern-header" role="banner">
           <div className="header-left">
             <div className="header-logo" onClick={this.onRefreshClick} title="Refresh">
               <Icon name='film' className="logo-icon" />
@@ -511,15 +607,15 @@ class App extends React.Component {
           </div>
         </header>
         
-        {/* Search Bar - Integrated */}
-        <div className="search-container">
+        {/* Search - semantics and theme */}
+        <section className="search-container" aria-label="Search movies">
           <div className="search-wrapper">
             <Input
-              type='text'
-              placeholder='Search movies by title or genre...'
+              type="search"
+              placeholder="Search movies by title or genre..."
               className="search-input"
-              icon='search'
-              iconPosition='left'
+              icon="search"
+              iconPosition="left"
               value={this.state.searchValue}
               onChange={(e) => this.setState({ searchValue: e.target.value })}
               onKeyPress={(e) => {
@@ -527,6 +623,7 @@ class App extends React.Component {
                   this.onSearchClick(this.state.searchKey, this.state.searchValue);
                 }
               }}
+              aria-label="Search movies by title or genre"
             />
             <Dropdown
               selection
@@ -555,290 +652,96 @@ class App extends React.Component {
                   this.onSearchClick(this.state.searchKey, '');
                 }}
                 title="Clear search"
+                aria-label="Clear search"
               >
-                <Icon name='times' />
+                <Icon name="times" />
               </Button>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Trendy Video Hero Section - Top Under Header */}
-        {!this.state.loadingTrending && this.state.trendingMovies.length > 0 && (
-          <div className="trendy-hero-section">
-            <div className="trending-badge-hero">
-              <Icon name="fire" />
-              <span>TRENDING NOW</span>
+        {/* Trending: loading skeleton, error + retry, or hero + dots */}
+        <section className="trending-video-section" aria-label="Trending video">
+          <h2 className="trending-video-title">Trending video</h2>
+          {this.state.loadingTrending && (
+            <div className="trending-hero-skeleton" aria-hidden="true">
+              <div className="trending-hero-skeleton__bar" />
+              <p className="trending-hero-skeleton__text">Loading trending…</p>
             </div>
-            <div className="trendy-hero-container">
-              {this.state.trendingMovies.map((movie, index) => {
-                const isActive = index === this.state.currentTrendingIndex;
-                const hasValidPoster = movie.poster && 
-                  typeof movie.poster === 'string' &&
-                  movie.poster.trim().length > 0 &&
-                  movie.poster !== 'null' &&
-                  movie.poster !== 'None' &&
-                  !movie.poster.includes('via.placeholder.com');
-                
-                return (
-                  <div 
-                    key={movie.id || index} 
-                    className={`trendy-hero-slide ${isActive ? 'active' : ''}`}
-                  >
-                    {hasValidPoster ? (
-                      <img 
-                        src={movie.poster} 
-                        alt={movie.title || 'Movie poster'}
-                        className="trendy-hero-image"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="trendy-hero-placeholder">
-                        <Icon name="film" size="massive" />
-                      </div>
-                    )}
-                    
-                    {/* Hero Overlay Content */}
-                    <div className="trendy-hero-overlay">
-                      <h1 className="trendy-hero-title">{movie.title || 'DECEIT'}</h1>
-                      <p className="trendy-hero-subtitle">{movie.genre || 'A female undercover cop is used as a sexual lure for a suspected killer'}</p>
-                      
-                      <div className="trendy-hero-metadata">
-                        <span>16+</span>
-                        <span>•</span>
-                        <span>CC</span>
-                        <span>•</span>
-                        <span>Serie</span>
-                        <span>•</span>
-                        <span>{movie.date ? new Date(movie.date).getFullYear() : '2026'}</span>
-                        <span>•</span>
-                        <span>1 season</span>
-                      </div>
-                      
-                      <div className="trendy-hero-buttons">
-                        <Button className="trendy-hero-play-btn">
-                          <Icon name="play" />
-                          Play
-                        </Button>
-                        <Button className="trendy-hero-download-btn">
-                          <Icon name="download" />
-                          Download
-                        </Button>
-                        <Button className="trendy-hero-favorite-btn" icon>
-                          <Icon name="star" />
-                        </Button>
-                      </div>
-                      
-                      <div className="trendy-hero-tabs">
-                        <div className="trendy-hero-tab active">SEASON 1</div>
-                        <div className="trendy-hero-tab">CAST & CREW</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          )}
+          {!this.state.loadingTrending && this.state.trendingMovies.length === 0 && (
+            <div className="trending-hero-error">
+              <p className="trending-hero-error__text">Trending unavailable.</p>
+              <Button primary onClick={() => this.loadTrendingMovies()} aria-label="Retry loading trending">
+                Retry
+              </Button>
             </div>
-            
-            {/* Bottom Indicators */}
-            <div className="trendy-hero-indicators">
-              {this.state.trendingMovies.map((_, index) => (
-                <div
-                  key={index}
-                  className={`trendy-hero-dot ${index === this.state.currentTrendingIndex ? 'active' : ''}`}
-                  onClick={() => this.setState({ currentTrendingIndex: index })}
-                />
-              ))}
+          )}
+          {!this.state.loadingTrending && this.state.trendingMovies.length > 0 && (
+            <div className="trending-video-hero-wrap">
+              <Hero
+                item={this.state.trendingMovies[this.state.currentTrendingIndex] || this.state.trendingMovies[0]}
+                ctaLabel="View details"
+                onCtaClick={this.onMovieClick}
+                trailerKey={this.state.currentTrendingTrailerKey}
+              />
+              <div className="hero-dots" role="tablist" aria-label="Trending slides">
+                {this.state.trendingMovies.slice(0, 10).map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    role="tab"
+                    tabIndex={0}
+                    aria-selected={index === this.state.currentTrendingIndex}
+                    aria-label={`Slide ${index + 1}, ${this.state.trendingMovies[index]?.title || ''}`}
+                    className={`hero-dot ${index === this.state.currentTrendingIndex ? 'hero-dot--active' : ''}`}
+                    onClick={() => this.setState({ currentTrendingIndex: index })}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </section>
 
-        {/* Main Content - Horizontal Scrollable Sections */}
-        <Container className="main-container" style={{ padding: '40px 20px', maxWidth: '1800px' }}>
+        <main className="main-container" style={{ padding: 'var(--space-24) var(--space-16)', maxWidth: '1800px', margin: '0 auto' }} role="main">
+          <div id="main-content">
           {this.state.loadingMovies ? (
             <Dimmer active inverted>
               <Loader size="large">Loading Movies...</Loader>
             </Dimmer>
           ) : (
-            <div className="horizontal-sections-layout">
-              {/* Section 1: Available Movies */}
-              <div className="horizontal-section available-section">
-                <div className="section-header-horizontal">
-                  <Icon name="film" size="large" />
-                  <div>
-                    <h2>Available Movies</h2>
-                    <p className="section-subtitle">{this.state.candidatesShow.length} movies available</p>
-                  </div>
-                </div>
-                {this.state.candidatesShow.length > 0 ? (
-                  <div className="horizontal-movies-scroll">
-                    <div className="horizontal-movies-container">
-                      {this.state.candidatesShow.slice(0, this.state.displayLimit).map(movie => {
-                        const isSelected = this.state.selected.some(m => m.id === movie.id);
-                        return (
-                          <div key={movie.id} className={`movie-card-horizontal ${isSelected ? 'selected' : ''}`}>
-                            <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
-                              {movie.poster ? (
-                                <img src={movie.poster} alt={movie.title} />
-                              ) : (
-                                <div className="poster-placeholder-horizontal">
-                                  <Icon name="film" size="big" />
-                                </div>
-                              )}
-                              <div className="movie-overlay-horizontal">
-                                <Button 
-                                  icon 
-                                  circular 
-                                  size="small"
-                                  className={isSelected ? "remove-btn-horizontal" : "add-btn-horizontal"}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    this.onCandidateClick(movie);
-                                  }}
-                                >
-                                  <Icon name={isSelected ? "check" : "plus"} />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="movie-info-horizontal">
-                              <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
-                              <p>{movie.genre} • {movie.date}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {this.state.candidatesShow.length > this.state.displayLimit && (
-                      <div className="load-more-horizontal">
-                        <Button 
-                          basic 
-                          inverted 
-                          color="blue" 
-                          onClick={this.loadMore}
-                          className="load-more-btn"
-                        >
-                          Load More ({this.state.candidatesShow.length - this.state.displayLimit} remaining)
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Message info className="empty-message-horizontal">
-                    <Message.Header>No movies found</Message.Header>
-                    <p>Try adjusting your search criteria or click the logo to refresh.</p>
-                  </Message>
-                )}
-              </div>
-
-              {/* Section 2: Selected Movies */}
-              <div className="horizontal-section selected-section">
-                <div className="section-header-horizontal">
-                  <Icon name="heart" color="red" size="large" />
-                  <div>
-                    <h2>Selected Movies</h2>
-                    <p className="section-subtitle">{this.state.selected.length} selected</p>
-                  </div>
-                </div>
-                {this.state.selected.length > 0 ? (
-                  <div className="horizontal-movies-scroll">
-                    <div className="horizontal-movies-container">
-                      {this.state.selected.map(movie => (
-                        <div key={movie.id} className="movie-card-horizontal selected-card">
-                          <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
-                            {movie.poster ? (
-                              <img src={movie.poster} alt={movie.title} />
-                            ) : (
-                              <div className="poster-placeholder-horizontal">
-                                <Icon name="film" />
-                              </div>
-                            )}
-                            <div className="movie-overlay-horizontal">
-                              <Button 
-                                icon 
-                                circular 
-                                size="small"
-                                className="remove-btn-horizontal"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  this.onSelectedClick(movie);
-                                }}
-                              >
-                                <Icon name="times" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="movie-info-horizontal">
-                            <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
-                            <p>{movie.genre} • {movie.date}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <Message info className="empty-message-horizontal">
-                    <Message.Header>No Movies Selected</Message.Header>
-                    <p>Click the <Icon name="plus" /> button on movies to add them here.</p>
-                  </Message>
-                )}
-              </div>
-
-              {/* Section 3: Recommendations */}
-              <div className="horizontal-section recommendations-section">
-                <div className="section-header-horizontal">
-                  <Icon name="fire" color={this.state.recommended.length > 0 ? "red" : "grey"} size="large" />
-                  <div>
-                    <h2>Recommendations</h2>
-                    <p className="section-subtitle">
-                      {this.state.loadingRecommendations 
-                        ? 'Loading...' 
-                        : this.state.recommended.length > 0 
-                          ? `${this.state.recommended.length} found using ${this.state.modelKey}`
-                          : this.state.selected.length > 0
-                            ? 'Click RECOMMEND to get suggestions'
-                            : 'Select movies first'}
-                    </p>
-                  </div>
-                </div>
-                {this.state.loadingRecommendations ? (
-                  <Dimmer active inverted>
-                    <Loader size="large">Loading Recommendations...</Loader>
-                  </Dimmer>
-                ) : this.state.recommended.length > 0 ? (
-                  <div className="horizontal-movies-scroll">
-                    <div className="horizontal-movies-container">
-                      {this.state.recommended.map(movie => (
-                        <div key={movie.id} className="movie-card-horizontal recommended-card">
-                          <div className="movie-poster-horizontal" onClick={() => this.onMovieClick(movie)}>
-                            {movie.poster ? (
-                              <img src={movie.poster} alt={movie.title} />
-                            ) : (
-                              <div className="poster-placeholder-horizontal">
-                                <Icon name="film" />
-                              </div>
-                            )}
-                            <div className="recommendation-badge-horizontal">
-                              <Icon name="fire" color="red" />
-                            </div>
-                          </div>
-                          <div className="movie-info-horizontal">
-                            <h3 onClick={() => this.onMovieClick(movie)}>{movie.title}</h3>
-                            <p>{movie.genre} • {movie.date}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <Message info className="empty-message-horizontal">
-                    <Message.Header>No Recommendations Yet</Message.Header>
-                    <p>Select movies and click RECOMMEND to get personalized recommendations!</p>
-                  </Message>
-                )}
-              </div>
-            </div>
+            <>
+              <Rail
+                title="Available movies"
+                items={this.state.candidatesShow.slice(0, this.state.displayLimit)}
+                onItemSelect={this.onMovieClick}
+                showAddButton
+                onAdd={this.onCandidateClick}
+                getSelected={(item) => this.state.selected.some(m => m.id === item.id)}
+                onWatchTrailer={this.openTrailerForMovie}
+                loadMore={this.state.candidatesShow.length > this.state.displayLimit ? this.loadMore : null}
+                showingCount={Math.min(this.state.candidatesShow.length, this.state.displayLimit)}
+                totalCount={this.state.candidatesShow.length}
+              />
+              <Rail
+                title="Selected movies"
+                items={this.state.selected}
+                onItemSelect={this.onMovieClick}
+                showAddButton
+                onAdd={this.onSelectedClick}
+                getSelected={() => true}
+                onWatchTrailer={this.openTrailerForMovie}
+              />
+              <Rail
+                title="Recommended for you"
+                items={this.state.recommended}
+                onItemSelect={this.onMovieClick}
+                onWatchTrailer={this.openTrailerForMovie}
+              />
+            </>
           )}
-        </Container>
+          </div>
+        </main>
         <footer className="modern-footer">
           <p>&copy; 2024 Movie Recommender System. Built with React & Flask.</p>
         </footer>

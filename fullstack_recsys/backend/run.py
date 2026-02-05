@@ -2,6 +2,16 @@ import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
+
+# Load .env from backend directory before any app/config imports (so TMDB key is available)
+_backend_dir = Path(__file__).resolve().parent
+try:
+	from dotenv import load_dotenv
+	load_dotenv(_backend_dir / '.env')
+except Exception:
+	pass
+
 from flask.json import jsonify
 from flask import request
 import requests
@@ -11,7 +21,7 @@ from flask import render_template
 from app import app, db, migrate, flask_bcrypt
 from app.model import User, Movie, Interaction
 from db_helper import get_all_movies, get_movies_by_ids, get_movie_by_id, use_mongodb, save_interaction
-from tmdb_helper import get_enhanced_movie_details
+from tmdb_helper import get_enhanced_movie_details, get_movie_details_from_tmdb
 import jwt
 
 # Configure logging
@@ -407,6 +417,33 @@ def get_movie_details(movie_id):
 				'error': 'MISSING_ID'
 			}), 400
 		
+		# Trending from TMDB: id is "tmdb_<tmdb_id>" — fetch details directly from TMDB (includes trailer_key)
+		movie_id_str = str(movie_id).strip()
+		if movie_id_str.lower().startswith('tmdb_'):
+			import re
+			match = re.search(r'(\d+)', movie_id_str)
+			if match:
+				tmdb_id = int(match.group(1))
+				enhanced_details = get_movie_details_from_tmdb(tmdb_id)
+				if enhanced_details:
+					genre_str = (enhanced_details.get('genres') or ['Unknown'])[0]
+					if isinstance(genre_str, dict):
+						genre_str = genre_str.get('name', 'Unknown')
+					result = {
+						'id': movie_id,
+						'title': enhanced_details.get('title', ''),
+						'genre': genre_str,
+						'date': enhanced_details.get('release_date', ''),
+						'poster': enhanced_details.get('poster_path'),
+						'enhanced': enhanced_details
+					}
+					return jsonify({'result': result}), 200
+				logger.warning(f"TMDB details not found for tmdb_id={tmdb_id}")
+			return jsonify({
+				'message': f'Movie with ID {movie_id} not found',
+				'error': 'NOT_FOUND'
+			}), 404
+		
 		# Try to convert to int if it's a numeric string, otherwise use as-is
 		movie = None
 		try:
@@ -438,12 +475,14 @@ def get_movie_details(movie_id):
 				'error': 'NOT_FOUND'
 			}), 404
 		
-		# Try to get enhanced details from TMDB
+		# Try to get enhanced details from TMDB (trailers, cast, etc.)
 		enhanced_details = None
 		try:
 			enhanced_details = get_enhanced_movie_details(movie.get('title'), movie.get('date'))
 		except Exception as e:
 			logger.warning(f"Failed to fetch TMDB details: {e}")
+		if not enhanced_details and not os.getenv('TMDB_API_KEY'):
+			logger.info("Trending trailers need TMDB_API_KEY. Set it in .env or environment (see backend/POSTER_API_SETUP.md).")
 		
 		# Merge basic movie info with enhanced details
 		result = {
