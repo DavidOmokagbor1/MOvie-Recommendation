@@ -2,21 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import './Hero.css';
 import { HERO_POSTER_DELAY_MS, HERO_TRAILER_PLAY_MS } from '../constants/heroTiming';
 
-const HERO_YOUTUBE_PLAYER_ID = 'hero-youtube-player';
-
 /**
  * Full-width hero for one featured item.
  * Props: item, ctaLabel?, onCtaClick?, trailerKey? – poster → trailer → poster (cycle).
- * "Watch trailer" opens YouTube in new tab; title / "View details" open movie modal.
- * Unmute uses YouTube IFrame API to turn on audio in-place.
+ * Trailer plays muted (browser autoplay policy). Use "Watch trailer" for sound in new tab.
  */
 function Hero({ item, ctaLabel = 'Get recommendations', onCtaClick, trailerKey }) {
   const [showTrailer, setShowTrailer] = useState(false);
   const [pauseTrailer, setPauseTrailer] = useState(false); // pause when hero out of view
-  const [ytReady, setYtReady] = useState(false);
   const heroRef = useRef(null);
-  const playerRef = useRef(null);
-  const userRequestedUnmuteRef = useRef(false);
 
   useEffect(() => {
     if (!trailerKey) {
@@ -56,96 +50,13 @@ function Hero({ item, ctaLabel = 'Get recommendations', onCtaClick, trailerKey }
     return () => obs.disconnect();
   }, []);
 
-  // Use YouTube IFrame API when ready (script may load from index.html or we inject it)
-  useEffect(() => {
-    const markReady = () => setYtReady(true);
-    if (window.YT && window.YT.Player) {
-      markReady();
-      return;
-    }
-    const onReady = () => markReady();
-    window.addEventListener('youtube-api-ready', onReady);
-    // If script not already loading from index.html, inject it
-    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-      const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        if (prev) prev();
-        window.dispatchEvent(new Event('youtube-api-ready'));
-      };
-      const script = document.createElement('script');
-      script.src = 'https://www.youtube.com/iframe_api';
-      script.async = true;
-      document.body.appendChild(script);
-      return () => {
-        window.removeEventListener('youtube-api-ready', onReady);
-        window.onYouTubeIframeAPIReady = prev;
-      };
-    }
-    return () => window.removeEventListener('youtube-api-ready', onReady);
-  }, []);
-
-  // Create YT player from our iframe (which has allow="autoplay" so unMute() works in modern browsers).
-  useEffect(() => {
-    if (!ytReady || !trailerKey || !showTrailer || pauseTrailer) {
-      userRequestedUnmuteRef.current = false;
-      if (playerRef.current) {
-        try {
-          playerRef.current.destroy();
-        } catch (_) {}
-        playerRef.current = null;
-      }
-      return;
-    }
-    const iframeEl = document.getElementById(HERO_YOUTUBE_PLAYER_ID);
-    if (!iframeEl || playerRef.current) return;
-    const player = new window.YT.Player(iframeEl, {
-      events: {
-        onReady: () => {
-          playerRef.current = player;
-          if (userRequestedUnmuteRef.current) {
-            try {
-              player.unMute();
-              if (typeof player.setVolume === 'function') player.setVolume(100);
-            } catch (_) {}
-          }
-        }
-      }
-    });
-    playerRef.current = player;
-    return () => {
-      userRequestedUnmuteRef.current = false;
-      try {
-        if (playerRef.current && playerRef.current.destroy) playerRef.current.destroy();
-      } catch (_) {}
-      playerRef.current = null;
-    };
-  }, [ytReady, trailerKey, showTrailer, pauseTrailer]);
-
-  const handleUnmute = (e) => {
-    e.stopPropagation();
-    if (!trailerKey) return;
-    userRequestedUnmuteRef.current = true;
-    const p = playerRef.current;
-    if (p && typeof p.unMute === 'function') {
-      try {
-        p.unMute();
-        if (typeof p.setVolume === 'function') p.setVolume(100);
-      } catch (_) {
-        window.open(`https://www.youtube.com/watch?v=${trailerKey}`, '_blank', 'noopener,noreferrer');
-      }
-    } else {
-      window.open(`https://www.youtube.com/watch?v=${trailerKey}`, '_blank', 'noopener,noreferrer');
-    }
-  };
-
   if (!item) return null;
 
   const bgUrl = item.backdropUrl || item.poster || item.posterUrl;
-  // Embed URL: enablejsapi=1 for API control; mute=1 for autoplay; allow="autoplay" on iframe so unMute() works
-  const trailerEmbedUrl = trailerKey && !pauseTrailer
-    ? `https://www.youtube.com/embed/${trailerKey}?enablejsapi=1&autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${trailerKey}`
+  const trailerSrc = trailerKey && !pauseTrailer
+    ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1&loop=1&playlist=${trailerKey}`
     : null;
-  const trailerVisible = showTrailer && trailerEmbedUrl;
+  const trailerVisible = showTrailer && trailerSrc;
   const trailerUrl = trailerKey ? `https://www.youtube.com/watch?v=${trailerKey}` : null;
 
   const handleKeyDown = (e) => {
@@ -167,42 +78,18 @@ function Hero({ item, ctaLabel = 'Get recommendations', onCtaClick, trailerKey }
         )}
         {trailerKey && (
           <div className={`hero__trailer ${trailerVisible ? 'hero__trailer--visible' : ''}`}>
-            {/* Our iframe with allow="autoplay" so YT API unMute() works; we create YT.Player from it */}
             <div className="hero__trailer-iframe-wrap">
-              {ytReady && trailerVisible && (
-                <iframe
-                  id={HERO_YOUTUBE_PLAYER_ID}
-                  title={`Trailer for ${item.title || 'featured'}`}
-                  src={trailerEmbedUrl}
-                  frameBorder="0"
-                  allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="hero__trailer-iframe"
-                />
-              )}
-              {!ytReady && trailerVisible && (
+              {trailerVisible && (
                 <iframe
                   title={`Trailer for ${item.title || 'featured'}`}
-                  src={trailerEmbedUrl}
+                  src={trailerSrc}
                   frameBorder="0"
-                  allow="autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   className="hero__trailer-iframe"
                 />
               )}
             </div>
-            {trailerVisible && (
-              <button
-                type="button"
-                className="hero__unmute"
-                onClick={handleUnmute}
-                aria-label="Unmute trailer"
-                title="Unmute"
-              >
-                <span className="hero__unmute-icon" aria-hidden="true">🔊</span>
-                <span className="hero__unmute-label">Unmute</span>
-              </button>
-            )}
           </div>
         )}
         <div className="hero__overlay" aria-hidden="true" />
