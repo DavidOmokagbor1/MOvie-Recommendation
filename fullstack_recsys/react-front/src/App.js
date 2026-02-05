@@ -35,7 +35,9 @@ class App extends React.Component {
       currentTrendingIndex: 0,
       loadingTrending: true,
       currentTrendingTrailerKey: null,
-      trendingLoadError: null
+      trendingLoadError: null,
+      searchOverlayOpen: false,
+      backgroundSlideIndex: 0
     }
     this.loadMovieDB = this.loadMovieDB.bind(this);
     this.loadTrendingMovies = this.loadTrendingMovies.bind(this);
@@ -59,6 +61,8 @@ class App extends React.Component {
 
   componentDidMount() {
     document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keydown', this.handleSearchOverlayKeyDown);
+    this.startBackgroundSlide();
     this.startTrendingAutoSlide();
     this.fetchTrendingTrailerIfNeeded();
   }
@@ -103,14 +107,30 @@ class App extends React.Component {
   };
 
   componentWillUnmount() {
-    // Clean up keyboard listeners
     document.removeEventListener('keydown', this.handleKeyDown);
-    // Clear trending auto-slide interval
+    document.removeEventListener('keydown', this.handleSearchOverlayKeyDown);
     if (this.trendingInterval) {
       clearInterval(this.trendingInterval);
       this.trendingInterval = null;
     }
+    if (this.backgroundSlideInterval) {
+      clearInterval(this.backgroundSlideInterval);
+      this.backgroundSlideInterval = null;
+    }
   }
+
+  handleSearchOverlayKeyDown = (e) => {
+    if (e.key === 'Escape' && this.state.searchOverlayOpen) {
+      this.setState({ searchOverlayOpen: false });
+    }
+  };
+
+  startBackgroundSlide = () => {
+    if (this.backgroundSlideInterval) clearInterval(this.backgroundSlideInterval);
+    this.backgroundSlideInterval = setInterval(() => {
+      this.setState((prev) => ({ backgroundSlideIndex: prev.backgroundSlideIndex + 1 }));
+    }, 6000);
+  };
 
   startTrendingAutoSlide = () => {
     if (this.trendingInterval) {
@@ -553,21 +573,57 @@ class App extends React.Component {
   }
 
   render(){
+    const trendingMovies = this.state.trendingMovies || [];
+    const backgroundUrls = trendingMovies
+      .map((m) => m.backdropUrl || m.poster || m.posterUrl)
+      .filter(Boolean);
+    const hasBackgroundImages = backgroundUrls.length > 0;
+    const bgIndex = this.state.backgroundSlideIndex % Math.max(backgroundUrls.length, 1);
+    const bgIndexNext = (this.state.backgroundSlideIndex + 1) % Math.max(backgroundUrls.length, 1);
+
     return (
       <div className="App apple-tv-layout">
+        {/* Full-bleed auto-fading background */}
+        <div className="app-backdrop" aria-hidden="true">
+          {hasBackgroundImages ? (
+            <>
+              <div
+                className="app-backdrop__slide"
+                style={{
+                  backgroundImage: `url(${backgroundUrls[bgIndex]})`,
+                  opacity: this.state.backgroundSlideIndex % 2 === 0 ? 1 : 0,
+                }}
+              />
+              <div
+                className="app-backdrop__slide"
+                style={{
+                  backgroundImage: `url(${backgroundUrls[bgIndexNext]})`,
+                  opacity: this.state.backgroundSlideIndex % 2 === 1 ? 1 : 0,
+                }}
+              />
+            </>
+          ) : null}
+        </div>
+        <div className="app-backdrop-overlay" aria-hidden="true" />
+
+        <div className="app-content">
         <a href="#main-content" className="skip-link">Skip to main content</a>
         <Toast ref={this.toastRef} />
-        <header className="modern-header" role="banner">
-          <div className="header-left">
-            <div className="header-logo" onClick={this.onRefreshClick} title="Refresh">
-              <Icon name='film' className="logo-icon" />
-              <span className="logo-text">MovieRec</span>
-            </div>
-          </div>
+        <header className="modern-header modern-header-with-search" role="banner">
+          <div className="header-left-spacer" aria-hidden="true" />
           <div className="header-center">
-            <h1 className="app-title">Movie Recommender System</h1>
+            <h1 className="app-title">Movie Recommendation System</h1>
           </div>
           <div className="header-right">
+            <button
+              type="button"
+              className="search-icon-btn"
+              onClick={() => this.setState({ searchOverlayOpen: true })}
+              aria-label="Open search"
+              title="Search movies"
+            >
+              <Icon name="search" />
+            </button>
             <div className="recommendation-controls">
               <Label pointing="right" style={{ color: '#8b9dc3', background: 'transparent', border: 'none' }}>
                 Model:
@@ -606,63 +662,10 @@ class App extends React.Component {
             </div>
           </div>
         </header>
-        
-        {/* Search - semantics and theme */}
-        <section className="search-container" aria-label="Search movies">
-          <div className="search-wrapper">
-            <Input
-              type="search"
-              placeholder="Search movies by title or genre..."
-              className="search-input"
-              icon="search"
-              iconPosition="left"
-              value={this.state.searchValue}
-              onChange={(e) => this.setState({ searchValue: e.target.value })}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  this.onSearchClick(this.state.searchKey, this.state.searchValue);
-                }
-              }}
-              aria-label="Search movies by title or genre"
-            />
-            <Dropdown
-              selection
-              compact
-              className="search-select"
-              options={[
-                { key: 'title', text: 'Title', value: 'title' },
-                { key: 'genre', text: 'Genre', value: 'genre' },
-              ]}
-              value={this.state.searchKey}
-              onChange={(e, data) => this.onSelectChange(e, data)}
-            />
-            <Button 
-              className="search-button"
-              onClick={() => this.onSearchClick(this.state.searchKey, this.state.searchValue)}
-              disabled={!this.state.searchValue.trim()}
-            >
-              Search
-            </Button>
-            {this.state.searchValue && (
-              <Button 
-                icon
-                className="clear-search"
-                onClick={() => {
-                  this.setState({ searchValue: '' });
-                  this.onSearchClick(this.state.searchKey, '');
-                }}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <Icon name="times" />
-              </Button>
-            )}
-          </div>
-        </section>
 
         {/* Trending: loading skeleton, error + retry, or hero + dots */}
-        <section className="trending-video-section" aria-label="Trending video">
-          <h2 className="trending-video-title">Trending video</h2>
+        <section className="trending-video-section" aria-label="Trending movies">
+          <h2 className="trending-video-title">Trending movies</h2>
           {this.state.loadingTrending && (
             <div className="trending-hero-skeleton" aria-hidden="true">
               <div className="trending-hero-skeleton__bar" />
@@ -745,6 +748,86 @@ class App extends React.Component {
         <footer className="modern-footer">
           <p>&copy; 2024 Movie Recommender System. Built with React & Flask.</p>
         </footer>
+        </div>
+
+        {/* Search overlay (Apple TV style) */}
+        {this.state.searchOverlayOpen && (
+          <div
+            className="search-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search movies"
+          >
+            <div
+              className="search-overlay__backdrop"
+              onClick={() => this.setState({ searchOverlayOpen: false })}
+              aria-hidden="true"
+            />
+            <div className="search-overlay__panel">
+              <button
+                type="button"
+                className="search-overlay__close"
+                onClick={() => this.setState({ searchOverlayOpen: false })}
+                aria-label="Close search"
+              >
+                <Icon name="close" />
+              </button>
+              <div className="search-overlay__form">
+                <Input
+                  type="search"
+                  placeholder="Search movies by title or genre..."
+                  className="search-overlay__input"
+                  icon="search"
+                  iconPosition="left"
+                  value={this.state.searchValue}
+                  onChange={(e) => this.setState({ searchValue: e.target.value })}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      this.onSearchClick(this.state.searchKey, this.state.searchValue);
+                      this.setState({ searchOverlayOpen: false });
+                    }
+                  }}
+                  aria-label="Search movies"
+                  autoFocus
+                />
+                <Dropdown
+                  selection
+                  compact
+                  className="search-overlay__select"
+                  options={[
+                    { key: 'title', text: 'Title', value: 'title' },
+                    { key: 'genre', text: 'Genre', value: 'genre' },
+                  ]}
+                  value={this.state.searchKey}
+                  onChange={(e, data) => this.onSelectChange(e, data)}
+                />
+                <Button
+                  className="search-overlay__submit"
+                  onClick={() => {
+                    this.onSearchClick(this.state.searchKey, this.state.searchValue);
+                    this.setState({ searchOverlayOpen: false });
+                  }}
+                  disabled={!this.state.searchValue.trim()}
+                >
+                  Search
+                </Button>
+                {this.state.searchValue && (
+                  <Button
+                    icon
+                    className="search-overlay__clear"
+                    onClick={() => {
+                      this.setState({ searchValue: '' });
+                      this.onSearchClick(this.state.searchKey, '');
+                    }}
+                    aria-label="Clear search"
+                  >
+                    <Icon name="times" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Movie Details Modal */}
         <Modal

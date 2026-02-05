@@ -2,25 +2,44 @@
    MODERN 2026 MOVIE CARD DESIGN
    ============================================ */
 
+/* Apple-like easing for gesture feel */
 .movie-card {
   background: rgba(20, 24, 35, 0.8) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 16px !important;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+    border-color 0.2s ease,
+    background 0.2s ease;
   cursor: pointer;
   position: relative;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .movie-card:hover,
 .movie-card.hovered {
-  transform: translateY(-12px) scale(1.03);
+  transform: translateY(-10px) scale(1.04);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(1, 180, 228, 0.3) !important;
   border-color: rgba(1, 180, 228, 0.6) !important;
   background: rgba(20, 24, 35, 0.95) !important;
+}
+
+/* Press / click gesture: subtle scale-down */
+.movie-card:active {
+  transform: translateY(-6px) scale(0.98);
+  transition-duration: 0.1s;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+.movie-card:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: 3px;
+  transform: translateY(-10px) scale(1.04);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(10, 132, 255, 0.3) !important;
 }
 
 .movie-card.selected {
@@ -41,12 +60,19 @@
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1), filter 0.25s ease;
 }
 
-.movie-card:hover .poster-image {
-  transform: scale(1.2);
-  filter: brightness(1.1);
+.movie-card:hover .poster-image,
+.movie-card.hovered .poster-image,
+.movie-card:focus-visible .poster-image {
+  transform: scale(1.08);
+  filter: brightness(1.08);
+}
+
+.movie-card:active .poster-image {
+  transform: scale(1.02);
+  transition-duration: 0.1s;
 }
 
 .poster-placeholder {
@@ -93,7 +119,7 @@
   justify-content: center;
   padding: 24px;
   opacity: 0;
-  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
   pointer-events: none;
 }
 

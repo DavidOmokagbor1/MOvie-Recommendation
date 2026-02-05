@@ -11,7 +11,40 @@
   overflow-x: hidden;
 }
 
-/* Animated Background Gradient */
+/* Full-bleed auto-fading background (trending images) */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.app-backdrop__slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 1.5s ease-in-out;
+  pointer-events: none;
+}
+.app-backdrop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(0, 0, 0, 0.5) 40%,
+    rgba(0, 0, 0, 0.75) 100%
+  );
+}
+.app-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Animated Background Gradient (above backdrop when visible) */
 .App::before {
   content: '';
   position: fixed;
@@ -24,7 +57,7 @@
     radial-gradient(circle at 80% 80%, rgba(229, 9, 20, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 40% 20%, rgba(144, 206, 161, 0.1) 0%, transparent 50%);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }
 
 /* ============================================
@@ -50,6 +83,7 @@
   display: flex;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .header-logo {
@@ -86,14 +120,23 @@
   letter-spacing: -0.5px;
 }
 
-.header-center {
+/* Left spacer: same flex as right so title is truly centered */
+.header-left-spacer {
   flex: 1;
-  align-items: start;
-  text-align: center;
+  min-width: 0;
+  pointer-events: none;
+}
+.header-center {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 16px;
 }
 
 .app-title {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 800;
   background: linear-gradient(135deg, #ffffff 0%, #01b4e4 50%, #90cea1 100%);
   -webkit-background-clip: text;
@@ -105,13 +148,50 @@
 }
 
 .header-right {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 16px;
+  min-width: 0;
+}
+
+/* Header with search bar beside model controls */
+.modern-header-with-search .header-right {
+  gap: 14px;
+  flex-wrap: nowrap;
+}
+.search-wrapper-in-header {
+  max-width: 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+}
+.search-wrapper-in-header .search-input {
+  flex: 1;
+  min-width: 100px;
+}
+.search-wrapper-in-header .search-input input {
+  padding: 6px 10px !important;
+  font-size: 0.9rem;
+}
+.search-wrapper-in-header .search-select {
+  min-width: 80px !important;
+}
+.search-wrapper-in-header .search-button {
+  padding: 6px 12px;
+  font-size: 0.875rem;
 }
 
 .recommendation-controls {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
@@ -120,8 +200,6 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  display: flex;
-  flex-direction: column;
 }
 
 .model-selector {
@@ -157,6 +235,171 @@
 .recommend-btn:disabled {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
+}
+.recommend-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+.recommend-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* Apple-style interactivity: smooth transitions and gesture feel */
+.search-wrapper-in-header .search-input input,
+.search-wrapper-in-header .search-button,
+.search-wrapper-in-header .search-select .ui.dropdown,
+.recommendation-controls .ui.dropdown,
+.recommendation-controls .ui.button {
+  transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+.search-wrapper-in-header .search-input input:focus,
+.search-wrapper-in-header .search-button:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.8);
+  outline-offset: 2px;
+}
+.search-wrapper-in-header .search-button:hover,
+.recommendation-controls .ui.button:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+.search-wrapper-in-header .search-button:active,
+.recommendation-controls .ui.button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.recommendation-controls .ui.dropdown:hover {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Search icon button (Apple TV style: icon only in header) */
+.search-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.search-icon-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+.search-icon-btn:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.8);
+  outline-offset: 2px;
+}
+.search-icon-btn .icon {
+  margin: 0 !important;
+  font-size: 1.35rem !important;
+}
+
+/* Search overlay (full-screen, Apple TV style) */
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 24px 24px;
+  animation: search-overlay-fade-in 0.25s ease-out;
+}
+.search-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+}
+.search-overlay__panel {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  padding: 28px 24px;
+  background: rgba(28, 28, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+.search-overlay__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.search-overlay__close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.search-overlay__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.search-overlay__input {
+  flex: 1;
+  min-width: 200px;
+}
+.search-overlay__input input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  font-size: 1rem !important;
+  padding: 12px 16px !important;
+  border-radius: 10px !important;
+}
+.search-overlay__input input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.search-overlay__select {
+  min-width: 100px !important;
+}
+.search-overlay__select .ui.dropdown {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+  border-radius: 10px !important;
+}
+.search-overlay__submit {
+  background: #0A84FF !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 12px 20px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+}
+.search-overlay__submit:hover:not(:disabled) {
+  background: #409cff !important;
+}
+.search-overlay__clear {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+@keyframes search-overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ============================================
@@ -460,6 +703,12 @@
   padding: 40px 20px !important;
   max-width: 1800px !important;
   margin: 0 auto !important;
+  animation: main-content-fade-in 0.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@keyframes main-content-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ============================================
@@ -544,11 +793,13 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.28s ease, border-color 0.2s ease, background 0.2s ease;
   cursor: pointer;
   position: relative;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .movie-card-horizontal:hover {
@@ -556,6 +807,18 @@
   border-color: rgba(1, 180, 228, 0.5);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.movie-card-horizontal:active {
+  transform: translateY(-4px) scale(0.98);
+  transition-duration: 0.1s;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.movie-card-horizontal:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: 3px;
+  transform: translateY(-8px) scale(1.05);
 }
 
 .movie-card-horizontal.selected {
@@ -590,11 +853,17 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.movie-card-horizontal:hover .movie-poster-horizontal img {
-  transform: scale(1.15);
+.movie-card-horizontal:hover .movie-poster-horizontal img,
+.movie-card-horizontal:focus-visible .movie-poster-horizontal img {
+  transform: scale(1.08);
+}
+
+.movie-card-horizontal:active .movie-poster-horizontal img {
+  transform: scale(1.02);
+  transition-duration: 0.1s;
 }
 
 .poster-placeholder-horizontal {
@@ -820,12 +1089,14 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.28s ease, border-color 0.2s ease, background 0.2s ease;
   cursor: pointer;
   position: relative;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   min-height: 280px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .movie-card-modern:hover {
@@ -833,6 +1104,18 @@
   border-color: rgba(1, 180, 228, 0.5);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.movie-card-modern:active {
+  transform: translateY(-4px) scale(0.98);
+  transition-duration: 0.1s;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.movie-card-modern:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: 3px;
+  transform: translateY(-8px) scale(1.03);
 }
 
 .movie-card-modern.selected {
@@ -866,11 +1149,17 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.movie-card-modern:hover .movie-poster-modern img {
-  transform: scale(1.15);
+.movie-card-modern:hover .movie-poster-modern img,
+.movie-card-modern:focus-visible .movie-poster-modern img {
+  transform: scale(1.08);
+}
+
+.movie-card-modern:active .movie-poster-modern img {
+  transform: scale(1.02);
+  transition-duration: 0.1s;
 }
 
 .poster-placeholder-modern {
@@ -1062,12 +1351,13 @@
   outline-offset: 2px;
 }
 
-/* Trending video (auto slide) section title - large like hero title */
+/* Trending movies section title */
 .trending-video-title {
   font-family: var(--font-heading);
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(1.25rem, 3.5vw, 1.75rem);
   font-weight: 700;
-  color: var(--color-text);
+  font-style: italic;
+  color: #c45c4a;
   margin: 0;
   padding: var(--space-24) var(--space-32) var(--space-12);
   letter-spacing: -0.02em;
