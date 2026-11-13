@@ -2,10 +2,12 @@
 
 <div align="center">
 
-  
+  [![CI](https://github.com/DavidOmokagbor1/MOvie-Recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/DavidOmokagbor1/MOvie-Recommendation/actions/workflows/ci.yml)
+
   <h3>A Full-Stack Machine Learning Application</h3>
   <p>Production-ready movie recommendation system with user authentication, multiple ML models, and cloud deployment</p>
-  <p><strong>Live Demo:</strong> Search through 1,682 movies • Get personalized recommendations • Track your viewing history</p>
+  <p><strong>Live Demo:</strong> <a href="https://movie-recommender-delta-eight.vercel.app/">https://movie-recommender-delta-eight.vercel.app/</a></p>
+  <p>Search through 1,682 movies • Get personalized recommendations • Track your viewing history</p>
   
   <p>
     <a href="#-features">Features</a> •
@@ -125,7 +127,7 @@ The application features a modern, intuitive interface with:
 - **Render** - Backend and ML API hosting
 - **Vercel** - Frontend hosting
 - **MongoDB Atlas** - Managed database service
-- **GitHub Actions** - CI/CD (if configured)
+- **GitHub Actions** - CI (pytest + frontend tests)
 
 ---
 
@@ -184,13 +186,13 @@ pip install -r requirements.txt
 
 3. **Frontend Setup**
 ```bash
-cd react-front
+cd fullstack_recsys/react-front
 npm install --legacy-peer-deps
 ```
 
 4. **Initialize Database** (Optional - pre-built DB included)
 ```bash
-cd backend
+cd fullstack_recsys/backend
 flask db init
 flask db migrate
 flask db upgrade
@@ -219,7 +221,7 @@ See [MONGODB_SETUP.md](fullstack_recsys/MONGODB_SETUP.md) and [TRENDING_SETUP.md
 
 **Option 1: Run all services together**
 ```bash
-cd react-front
+cd fullstack_recsys/react-front
 npm run start-all
 ```
 
@@ -227,7 +229,7 @@ npm run start-all
 
 Terminal 1 - ML API:
 ```bash
-cd api
+cd fullstack_recsys/api
 python api.py
 ```
 
@@ -239,7 +241,7 @@ python run.py
 
 Terminal 3 - Frontend:
 ```bash
-cd react-front
+cd fullstack_recsys/react-front
 npm start
 ```
 
@@ -253,9 +255,8 @@ npm start
 ## ☁️ Deployment
 
 ### Production URLs
-- **Frontend**: [Vercel Deployment](https://your-app.vercel.app)
-- **Backend**: [Render Deployment](https://your-backend.onrender.com)
-- **ML API**: [Render Deployment](https://your-ml-api.onrender.com)
+- **Frontend**: [https://movie-recommender-delta-eight.vercel.app/](https://movie-recommender-delta-eight.vercel.app/)
+- **Backend / ML API**: hosted on Render (set `REACT_APP_API_URL` / `ML_API_URL` from your Render service URLs)
 
 ### Deployment Configuration
 
@@ -272,7 +273,7 @@ All services deploy from the `master` branch only.
   - `ML_API_URL` - ML API service URL
 
 **Frontend (Vercel)**
-- Root Directory: `react-front`
+- Root Directory: `fullstack_recsys/react-front`
 - Branch: `master`
 - Build Command: `npm run build`
 - Environment Variables:
@@ -424,7 +425,20 @@ See [API_DOCUMENTATION.md](fullstack_recsys/API_DOCUMENTATION.md) for complete A
 
 ## 🧪 Testing
 
-### Backend API Testing
+### Unit tests (no live server / MongoDB)
+```bash
+# Backend auth, validation, and recommend route tests
+cd fullstack_recsys/backend
+pip install -r requirements.txt pytest
+pytest -q tests
+
+# Recommendation scoring / EASE unit tests
+cd fullstack_recsys/api
+pip install -r requirements.txt pytest
+pytest -q tests
+```
+
+### Integration smoke tests (requires running backend)
 ```bash
 cd fullstack_recsys/backend
 python test_endpoints.py
@@ -432,8 +446,8 @@ python test_endpoints.py
 
 ### Frontend Testing
 ```bash
-cd react-front
-npm test
+cd fullstack_recsys/react-front
+npm test -- --watchAll=false
 ```
 
 ---
@@ -510,7 +524,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
