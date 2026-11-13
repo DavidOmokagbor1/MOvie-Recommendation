@@ -34,10 +34,12 @@ instance/
 *.sqlite3
 app.db
 
-# Environment variables
+# Environment variables and local secret dumps
 .env
+.env.*
 .env.local
 .env.*.local
+*.save
 
 # Node
 node_modules/
