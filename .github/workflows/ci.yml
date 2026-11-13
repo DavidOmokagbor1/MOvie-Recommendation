@@ -8,7 +8,8 @@ on:
 jobs:
   backend-tests:
     name: Backend & ML unit tests
-    runs-on: ubuntu-latest
+    # ubuntu-22.04 still publishes CPython 3.9 builds; ubuntu-latest (26.04) does not
+    runs-on: ubuntu-22.04
     defaults:
       run:
         working-directory: fullstack_recsys/backend
